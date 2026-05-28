@@ -5,6 +5,7 @@ import { PHASES } from '@shared/phases';
 import { api, ApiError, type GameSummary, type TournamentData } from '../api-client';
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
+import { TeamSide } from '../components/Flag';
 import { matchSides } from '../lib/matchDisplay';
 
 type AdminTab = 'games' | 'results' | 'players';
@@ -216,7 +217,7 @@ function AdminResults() {
                         <li key={m.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0' }}>
                             <code>{m.id}</code>
                             <span style={{ flex: 1 }}>
-                                {sides.home} vs {sides.away}
+                                <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} />
                             </span>
                             <input
                                 type="number"

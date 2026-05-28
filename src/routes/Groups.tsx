@@ -2,6 +2,8 @@
 
 import { useOutletContext } from 'react-router-dom';
 import { isGroupMatch } from '@shared/phases';
+import { flagEmoji } from '@data/flags';
+import { Flag } from '../components/Flag';
 import type { GameContextValue } from './GameLayout';
 import type { GroupLetter, GroupMatch, Team } from '@shared/types';
 
@@ -38,7 +40,10 @@ export function Groups() {
                             <h3>Group {g}</h3>
                             <ul>
                                 {teams.map((t) => (
-                                    <li key={t.id}>{t.name}</li>
+                                    <li key={t.id}>
+                                        <Flag emoji={flagEmoji(t.id)} />
+                                        {t.name}
+                                    </li>
                                 ))}
                             </ul>
                             <h4>Matches</h4>
@@ -47,8 +52,9 @@ export function Groups() {
                                     <li key={m.id}>
                                         {'homeTeamId' in m && (
                                             <>
-                                                {teamName(m.homeTeamId)} vs {teamName(m.awayTeamId)} —{' '}
-                                                {new Date(m.kickoffUtc).toLocaleDateString()}
+                                                <Flag emoji={flagEmoji(m.homeTeamId)} />
+                                                {teamName(m.homeTeamId)} vs <Flag emoji={flagEmoji(m.awayTeamId)} />
+                                                {teamName(m.awayTeamId)} — {new Date(m.kickoffUtc).toLocaleDateString()}
                                             </>
                                         )}
                                     </li>

@@ -1,7 +1,11 @@
 /** Display helpers for matches — shared by the Groups, Knockouts, My picks, and Admin views. */
 
 import { isGroupMatch } from '@shared/phases';
+import { flagEmoji } from '@data/flags';
 import type { BracketSlot, Match, Team } from '@shared/types';
+
+/** One side of a match for display: a name (team or slot label) and, for known teams, a flag emoji. */
+export type MatchSide = { name: string; flag?: string };
 
 /** Human-readable label for an unresolved knockout slot (e.g., "Winner of Group A"). */
 export function slotLabel(slot: BracketSlot): string {
@@ -20,15 +24,15 @@ export function slotLabel(slot: BracketSlot): string {
 }
 
 /**
- * The two sides of a match as display strings: team names for a group match, slot labels
- * (e.g., "Winner of Group A") for a knockout whose teams aren't resolved yet.
+ * The two sides of a match for display: team names + flags for a group match, slot labels
+ * (e.g., "Winner of Group A") with no flag for a knockout whose teams aren't resolved yet.
  */
-export function matchSides(match: Match, teams: ReadonlyArray<Team>): { home: string; away: string } {
+export function matchSides(match: Match, teams: ReadonlyArray<Team>): { home: MatchSide; away: MatchSide } {
     if (isGroupMatch(match)) {
-        const name = (id: string) => teams.find((t) => t.id === id)?.name ?? id;
+        const side = (id: string): MatchSide => ({ name: teams.find((t) => t.id === id)?.name ?? id, flag: flagEmoji(id) });
 
-        return { home: name(match.homeTeamId), away: name(match.awayTeamId) };
+        return { home: side(match.homeTeamId), away: side(match.awayTeamId) };
     }
 
-    return { home: slotLabel(match.homeSlot), away: slotLabel(match.awaySlot) };
+    return { home: { name: slotLabel(match.homeSlot) }, away: { name: slotLabel(match.awaySlot) } };
 }

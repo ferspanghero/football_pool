@@ -5,6 +5,8 @@ import { useOutletContext, useParams } from 'react-router-dom';
 import { api, ApiError, type MatchPredictionsPayload } from '../api-client';
 import { formatKickoff } from '@shared/time';
 import { scoreMatch, POINTS } from '@shared/scoring';
+import { matchSides } from '../lib/matchDisplay';
+import { TeamSide } from '../components/Flag';
 import type { GameContextValue } from './GameLayout';
 import type { Score } from '@shared/types';
 
@@ -25,10 +27,17 @@ export function MatchDetail() {
 
     if (!match) return <p>Match not found.</p>;
 
+    const sides = matchSides(match, ctx.tournament.teams);
+    const heading = (
+        <h2>
+            <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} />
+        </h2>
+    );
+
     if (!locked) {
         return (
             <>
-                <h2>{matchId}</h2>
+                {heading}
                 <p>Predictions visible after kickoff at {formatKickoff(match.kickoffUtc)}.</p>
             </>
         );
@@ -36,7 +45,7 @@ export function MatchDetail() {
 
     return (
         <>
-            <h2>{matchId}</h2>
+            {heading}
             <p>Kickoff: {formatKickoff(match.kickoffUtc)}</p>
             <p>
                 Actual result:{' '}

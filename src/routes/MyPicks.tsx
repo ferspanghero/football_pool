@@ -9,7 +9,9 @@ import { useOutletContext } from 'react-router-dom';
 import { api, ApiError } from '../api-client';
 import { buildPhaseGroups, currentPhaseIndex, isGroupMatch } from '@shared/phases';
 import { formatKickoffDate, formatKickoffTime } from '@shared/time';
-import { matchSides } from '../lib/matchDisplay';
+import { flagEmoji } from '@data/flags';
+import { matchSides, type MatchSide } from '../lib/matchDisplay';
+import { TeamSide } from '../components/Flag';
 import type { GameContextValue } from './GameLayout';
 import type { Match, MatchId, Score } from '@shared/types';
 
@@ -93,7 +95,7 @@ function groupByDay(matches: ReadonlyArray<Match>): { date: string; matches: Mat
     return order.map((date) => ({ date, matches: byDate.get(date)! }));
 }
 
-type RowProps = { prefix: string; home: string; away: string; pick: Score | undefined; time: string };
+type RowProps = { prefix: string; home: MatchSide; away: MatchSide; pick: Score | undefined; time: string };
 
 /** A read-only match row (kickoff has passed): shows the saved pick and a "locked" badge. */
 function LockedRow({ prefix, home, away, pick, time }: RowProps) {
@@ -103,11 +105,15 @@ function LockedRow({ prefix, home, away, pick, time }: RowProps) {
                 <span className="badge locked">locked</span>
             </span>
             <span className="pick-prefix">{prefix}</span>
-            <span className="pick-team home">{home}</span>
+            <span className="pick-team home">
+                <TeamSide side={home} />
+            </span>
             <span className="pick-val">{pick ? pick.home : '–'}</span>
             <span className="pick-dash">-</span>
             <span className="pick-val">{pick ? pick.away : '–'}</span>
-            <span className="pick-team away">{away}</span>
+            <span className="pick-team away">
+                <TeamSide side={away} />
+            </span>
             <span className="pick-action" />
             <time className="pick-time">{time}</time>
         </>
@@ -146,11 +152,15 @@ function OpenRow({ matchId, prefix, home, away, pick, time }: RowProps & { match
                 <span className="badge">open</span>
             </span>
             <span className="pick-prefix">{prefix}</span>
-            <span className="pick-team home">{home}</span>
+            <span className="pick-team home">
+                <TeamSide side={home} />
+            </span>
             <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} />
             <span className="pick-dash">-</span>
             <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} />
-            <span className="pick-team away">{away}</span>
+            <span className="pick-team away">
+                <TeamSide side={away} />
+            </span>
             <span className="pick-action">
                 <button type="button" data-match={matchId} onClick={onSave} disabled={saving}>
                     {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
@@ -192,7 +202,7 @@ function ChampionBanner({ locked }: { locked: boolean }) {
                         <option value="">— pick one —</option>
                         {ctx.tournament.teams.map((t) => (
                             <option key={t.id} value={t.id}>
-                                {t.name}
+                                {flagEmoji(t.id)} {t.name}
                             </option>
                         ))}
                     </select>{' '}
