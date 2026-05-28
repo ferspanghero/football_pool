@@ -7,6 +7,7 @@
  * - `POST /admin/logout` — clears cookie.
  * - `POST /admin/games` — create a new game (`{ name, password }`).
  * - `DELETE /admin/games/:id` — remove a game and its players + predictions (results are global).
+ * - `GET /admin/games/:id/players` — list a game's players (for the admin Players tab).
  * - `PUT /admin/results/:matchId` — record/overwrite a match's 90-minute score.
  * - `DELETE /admin/players/:id` — remove a player (cascade-deletes their predictions).
  */
@@ -101,6 +102,18 @@ adminRoutes.delete('/admin/games/:id', requireAdmin, async (c) => {
     await gamesRepo.delete(c.env.DB, gameId);
 
     return c.json({ ok: true });
+});
+
+adminRoutes.get('/admin/games/:id/players', requireAdmin, async (c) => {
+    const gameId = Number.parseInt(c.req.param('id'), 10);
+    if (!Number.isFinite(gameId)) {
+        return c.json({ error: { code: 'VALIDATION', message: 'invalid game id' } }, 400);
+    }
+    const players = await playersRepo.listByGame(c.env.DB, gameId);
+
+    return c.json({
+        players: players.map((p) => ({ id: p.id, displayName: p.displayName, championTeamId: p.championTeamId ?? null })),
+    });
 });
 
 adminRoutes.delete('/admin/players/:id', requireAdmin, async (c) => {

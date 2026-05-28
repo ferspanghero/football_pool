@@ -13,9 +13,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "deploy": "wrangler deploy"
+    "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build",
+    "deploy": "wrangler deploy",
+    "deploy:pages": "wrangler pages deploy dist --project-name football-pool",
+    "release": "npm run check && npm run deploy && npm run deploy:pages"
   },
   "dependencies": {
     "hono": "^4.6.0",

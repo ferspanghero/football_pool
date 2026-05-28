@@ -1,6 +1,7 @@
 /** Root component. Wires React Router; each route lives in `src/routes/`. */
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastProvider } from './components/Toast';
 import { Entry } from './routes/Entry';
 import { GameLayout } from './routes/GameLayout';
 import { MyPicks } from './routes/MyPicks';
@@ -13,18 +14,20 @@ import { Admin } from './routes/Admin';
 export function App() {
     return (
         <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<Entry />} />
-                <Route path="/game/:gameId" element={<GameLayout />}>
-                    <Route index element={<MyPicks />} />
-                    <Route path="groups" element={<Groups />} />
-                    <Route path="knockouts" element={<Knockouts />} />
-                    <Route path="leaderboard" element={<Leaderboard />} />
-                    <Route path="match/:matchId" element={<MatchDetail />} />
-                </Route>
-                <Route path="/admin/*" element={<Admin />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <ToastProvider>
+                <Routes>
+                    <Route path="/" element={<Entry />} />
+                    <Route path="/game/:gameId" element={<GameLayout />}>
+                        <Route index element={<MyPicks />} />
+                        <Route path="groups" element={<Groups />} />
+                        <Route path="knockouts" element={<Knockouts />} />
+                        <Route path="leaderboard" element={<Leaderboard />} />
+                        <Route path="match/:matchId" element={<MatchDetail />} />
+                    </Route>
+                    <Route path="/admin/*" element={<Admin />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+            </ToastProvider>
         </BrowserRouter>
     );
 }

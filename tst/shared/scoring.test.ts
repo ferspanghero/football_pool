@@ -1,13 +1,7 @@
 import { describe, test, expect } from 'vitest';
-import {
-    scoreMatch,
-    scoreMatchWeighted,
-    computeLeaderboard,
-    determineChampion,
-    PHASE_MULTIPLIER,
-    CHAMPION_BONUS,
-} from '@shared/scoring';
-import type { Phase, Score } from '@shared/types';
+import { scoreMatch, scoreMatchWeighted, computeLeaderboard, determineChampion, CHAMPION_BONUS } from '@shared/scoring';
+import { PHASES, phaseById } from '@shared/phases';
+import type { PhaseId, Score } from '@shared/types';
 
 describe('scoreMatch', () => {
     test('returns 7 for an exact non-draw match', () => {
@@ -62,40 +56,34 @@ describe('scoreMatch', () => {
 describe('scoreMatchWeighted', () => {
     const exact: [Score, Score] = [{ home: 2, away: 1 }, { home: 2, away: 1 }];
 
-    test.each<Phase>(['GROUP', 'R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'])(
-        'multiplies score by phase factor for %s',
-        (phase) => {
-            // Arrange
-            const expected = 7 * PHASE_MULTIPLIER[phase];
+    test.each(PHASES)('multiplies score by the $id phase multiplier', (phase) => {
+        // Arrange, Act
+        const actual = scoreMatchWeighted(exact[0], exact[1], phase.id);
 
-            // Act
-            const actual = scoreMatchWeighted(exact[0], exact[1], phase);
+        // Assert
+        expect(actual).toBe(7 * phase.multiplier);
+    });
 
-            // Assert
-            expect(actual).toBe(expected);
-        },
-    );
-
-    test('uses Group ×1, R32 ×2, R16 ×3, QF ×4, SF ×5, 3RD ×5, FINAL ×6', () => {
+    test('uses group ×1, R32 ×2, R16 ×3, QF ×4, SF ×5, 3rd ×5, Final ×6', () => {
         // Arrange, Act, Assert
-        expect(PHASE_MULTIPLIER).toEqual({
-            GROUP: 1,
-            R32: 2,
-            R16: 3,
-            QF: 4,
-            SF: 5,
-            '3RD': 5,
-            FINAL: 6,
-        });
+        expect(phaseById('GROUP_R1').multiplier).toBe(1);
+        expect(phaseById('GROUP_R2').multiplier).toBe(1);
+        expect(phaseById('GROUP_R3').multiplier).toBe(1);
+        expect(phaseById('R32').multiplier).toBe(2);
+        expect(phaseById('R16').multiplier).toBe(3);
+        expect(phaseById('QF').multiplier).toBe(4);
+        expect(phaseById('SF').multiplier).toBe(5);
+        expect(phaseById('THIRD').multiplier).toBe(5);
+        expect(phaseById('FINAL').multiplier).toBe(6);
     });
 });
 
 describe('computeLeaderboard', () => {
-    const matchA: { id: string; phase: Phase } = { id: 'G_A_1', phase: 'GROUP' };
-    const matchB: { id: string; phase: Phase } = { id: 'G_B_1', phase: 'GROUP' };
-    const matchFinal: { id: string; phase: Phase } = { id: 'M104', phase: 'FINAL' };
+    const matchA: { id: string; phase: PhaseId } = { id: 'G_A_1', phase: 'GROUP_R1' };
+    const matchB: { id: string; phase: PhaseId } = { id: 'G_B_1', phase: 'GROUP_R1' };
+    const matchFinal: { id: string; phase: PhaseId } = { id: 'M104', phase: 'FINAL' };
 
-    const matchesById = new Map<string, { id: string; phase: Phase }>([
+    const matchesById = new Map<string, { id: string; phase: PhaseId }>([
         [matchA.id, matchA],
         [matchB.id, matchB],
         [matchFinal.id, matchFinal],
@@ -338,11 +326,11 @@ describe('computeLeaderboard', () => {
             ['G_C_1', { home: 1, away: 0 }],
             ['G_D_1', { home: 1, away: 0 }],
         ]);
-        const matches: typeof matchesById = new Map([
-            ['G_A_1', { id: 'G_A_1', phase: 'GROUP' }],
-            ['G_B_1', { id: 'G_B_1', phase: 'GROUP' }],
-            ['G_C_1', { id: 'G_C_1', phase: 'GROUP' }],
-            ['G_D_1', { id: 'G_D_1', phase: 'GROUP' }],
+        const matches = new Map<string, { id: string; phase: PhaseId }>([
+            ['G_A_1', { id: 'G_A_1', phase: 'GROUP_R1' }],
+            ['G_B_1', { id: 'G_B_1', phase: 'GROUP_R1' }],
+            ['G_C_1', { id: 'G_C_1', phase: 'GROUP_R1' }],
+            ['G_D_1', { id: 'G_D_1', phase: 'GROUP_R1' }],
         ]);
 
         // Act

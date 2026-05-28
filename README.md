@@ -25,7 +25,7 @@ Per-match base points:
 | Correct goal-difference magnitude, wrong winner | 2 |
 | Nothing right | 0 |
 
-Base points are multiplied by a phase factor (group stage ×1, escalating to the final ×6). A correct champion pick adds a flat bonus. Knockout matches are scored against the 90-minute result. `shared/scoring.ts` holds the authoritative rules.
+Base points are multiplied by a phase factor (group stage ×1, escalating to the final ×6). A correct champion pick adds a flat bonus. Knockout matches are scored against the 90-minute result. Phases are first-class entities in `shared/phases.ts` (each owns its multiplier, label, and stage); `shared/scoring.ts` holds the scoring math.
 
 ## Tech Stack
 
@@ -90,7 +90,7 @@ npx playwright test     # browser end-to-end tests
 ```
 src/             # Frontend (React) — routes, api-client
 api/             # Worker — routes, auth, clock, repositories
-shared/          # Pure logic shared by client + worker (scoring, bracket, time, types)
+shared/          # Pure logic shared by client + worker (scoring, bracket, phases, time, types)
 data/            # Static tournament data
 migrations/      # D1 schema
 tst/             # Tests (unit, integration, e2e)

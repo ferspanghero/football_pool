@@ -55,6 +55,7 @@
 - [x] **A8c**: `PUT /api/admin/results/:matchId` + tests
 - [x] **A8d**: `DELETE /api/admin/players/:id` + tests
 - [x] **A8e** *(added)*: `DELETE /api/admin/games/:id` + `gamesRepo.delete` — removes a game's players + predictions (global `match_results` untouched); used by E2E cleanup
+- [x] **A8f** *(added)*: `GET /api/admin/games/:id/players` — lists a game's players for the admin Players tab + tests
 - [x] **A9**: Standardized error envelope (`{ error: { code, message } }` with codes UNAUTHENTICATED / FORBIDDEN / NOT_FOUND / VALIDATION / RATE_LIMITED / INTERNAL); Cloudflare rate-limit rules **deferred to deploy-time configuration** (documented in DEPLOY.md)
 
 ## Clock Injection (supersedes scattered `Date.now()` calls)
@@ -83,8 +84,8 @@
 - [x] **F9a**: Admin login screen
 - [x] **F9b**: Admin Games tab (list + create)
 - [x] **F9c**: Admin Results tab (filter by phase + score inputs per match)
-- [ ] **F9d**: Admin Players tab (per-game list + delete) — *placeholder text only; delete endpoint exists, UI form not built*
-- [ ] **F10**: Loading skeletons, error toast, outcome icons, offline banner — *deferred to polish pass*
+- [x] **F9d**: Admin Players tab — per-game list via `GET /api/admin/games/:id/players`, delete via `DELETE /api/admin/players/:id`
+- [x] **F10**: UI polish — loading skeletons, success/error toasts, color-coded outcome badges, numeric inputmode (offline banner deferred)
 
 ## Deployment
 
@@ -106,6 +107,7 @@ Scenario specs (preconditions → steps → expected) live in `plan.md` § Test 
 - [x] **E4c**: Match detail pre/post-kickoff visibility (`ui-surfaces.spec.ts`)
 - [x] **E4d**: Switch-game clears session, returns to `/` (`ui-surfaces.spec.ts`)
 - [x] **E5**: Auth rejections — wrong admin password, wrong game password (`auth.spec.ts`)
+- [x] **E6**: Admin Players tab — list a game's players + delete one (`admin-players.spec.ts`)
 
 ## Verification
 
@@ -115,3 +117,9 @@ Scenario specs (preconditions → steps → expected) live in `plan.md` § Test 
 - [x] **V4**: `npm run test:coverage` — ≥ 90% line and branch on `shared/`, `api/`, `data/` (UI excluded)
 - [x] **V5**: `npm run build` succeeds
 - [x] **V6**: UI flows verified by the Playwright E2E suite (E1-E5); a manual browser pass remains worthwhile before a production deploy
+
+## Backlog (post-v1)
+
+- [ ] **BL1**: Country flags next to team names — render each team's flag beside its name everywhere matches show (My picks rows, Groups cards, Knockouts, Match detail, Admin results). Needs a flag source keyed by team id; note FIFA 3-letter codes (`ENG`, `RSA`, …) are **not** ISO 3166 alpha-2, so a code→country mapping is required (then emoji regional-indicator flags, or bundled SVGs). Centralize the mapping next to the team data.
+- [ ] **BL2**: Robust returning-player access — let a player re-enter a game they already joined *without re-typing their display name*, and make impersonation impossible. **Why:** today `POST /api/games/:id/enter` does find-or-create by `(game_id, case-insensitive display_name)` gated only by the shared game password. That is brittle: a typo spawns a duplicate player, and anyone who knows the game password can type *another* player's name and read/overwrite their predictions. (The persistent `player_session` cookie only auto-resumes on the same device; a new device or post-"Switch game" still re-types name + password with no per-player auth.) **Constraint:** the "pick your name from a list" shortcut was already rejected as a foot-gun — the fix must never let one player access another. **Candidate approaches** (decide via `project-brainstorm` before building): a per-player PIN/secret set on first join; a per-player claim/magic link; or a longer-lived signed device credential to resume without re-typing. Touches the enter flow, the `players` schema (a secret/credential column), and the entry UI.
+- [ ] **BL3**: Localize kickoff times to the viewer's browser instead of hardcoded Pacific. Today `shared/time.ts` pins every formatter to `America/Los_Angeles` — a deliberate v1 choice so the whole group saw one shared wall-clock. **Goal:** render each kickoff in the *viewer's* own browser locale + timezone (e.g., a friend in Brazil sees BRT), since players span time zones. **Implementation:** drop the hardcoded `timeZone` (and locale) so `Intl.DateTimeFormat` uses the runtime's resolved zone/locale; these formatters are display-only and run client-side. **Note:** the My-picks per-day grouping keys off `formatKickoffDate`, so day boundaries become per-viewer (expected, not a bug). **Tests:** `tst/shared/time.test.ts` asserts fixed PDT/PST output — make the zone injectable (or pin `TZ` in the test) so it stays deterministic in CI.

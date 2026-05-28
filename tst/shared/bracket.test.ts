@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { groupStandings, bestThirds, resolveBracket } from '@shared/bracket';
+import { isGroupMatch, isKnockoutMatch } from '@shared/phases';
 import { TEAMS, MATCHES } from '@data/tournament';
 import type { GroupMatch, KnockoutMatch, Match, MatchId, Score, Team } from '@shared/types';
 
@@ -11,7 +12,7 @@ const teamsA: Team[] = [
 ];
 
 function makeMatch(id: string, home: string, away: string, kickoffIso = '2026-06-11T19:00:00Z'): GroupMatch {
-    return { id, phase: 'GROUP', group: 'A', kickoffUtc: kickoffIso, homeTeamId: home, awayTeamId: away };
+    return { id, phase: 'GROUP_R1', group: 'A', kickoffUtc: kickoffIso, homeTeamId: home, awayTeamId: away };
 }
 
 const matchesA: GroupMatch[] = [
@@ -147,12 +148,12 @@ describe('bestThirds', () => {
     function syntheticGroup(letter: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L', basePoints: number) {
         const teams: Team[] = [1, 2, 3, 4].map((n) => ({ id: `${letter}${n}`, name: `${letter}-${n}`, group: letter }));
         const matches: GroupMatch[] = [
-            { id: `m_${letter}_1`, phase: 'GROUP', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}1`, awayTeamId: `${letter}2` },
-            { id: `m_${letter}_2`, phase: 'GROUP', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}3`, awayTeamId: `${letter}4` },
-            { id: `m_${letter}_3`, phase: 'GROUP', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}1`, awayTeamId: `${letter}3` },
-            { id: `m_${letter}_4`, phase: 'GROUP', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}2`, awayTeamId: `${letter}4` },
-            { id: `m_${letter}_5`, phase: 'GROUP', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}1`, awayTeamId: `${letter}4` },
-            { id: `m_${letter}_6`, phase: 'GROUP', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}2`, awayTeamId: `${letter}3` },
+            { id: `m_${letter}_1`, phase: 'GROUP_R1', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}1`, awayTeamId: `${letter}2` },
+            { id: `m_${letter}_2`, phase: 'GROUP_R1', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}3`, awayTeamId: `${letter}4` },
+            { id: `m_${letter}_3`, phase: 'GROUP_R1', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}1`, awayTeamId: `${letter}3` },
+            { id: `m_${letter}_4`, phase: 'GROUP_R1', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}2`, awayTeamId: `${letter}4` },
+            { id: `m_${letter}_5`, phase: 'GROUP_R1', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}1`, awayTeamId: `${letter}4` },
+            { id: `m_${letter}_6`, phase: 'GROUP_R1', group: letter, kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: `${letter}2`, awayTeamId: `${letter}3` },
         ];
         // Build results: T1 wins all 3, T2 wins 2, T3 wins (basePoints / 3)-many, T4 loses all
         // Simpler: just produce a specific 3rd-place point count by giving T3 a unique result
@@ -215,12 +216,12 @@ describe('resolveBracket', () => {
             { id: 'B4', name: 'BTeam4', group: 'B' },
         ];
         const matchesB: GroupMatch[] = [
-            { id: 'mB1', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B1', awayTeamId: 'B2' },
-            { id: 'mB2', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B3', awayTeamId: 'B4' },
-            { id: 'mB3', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B1', awayTeamId: 'B3' },
-            { id: 'mB4', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B2', awayTeamId: 'B4' },
-            { id: 'mB5', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B1', awayTeamId: 'B4' },
-            { id: 'mB6', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B2', awayTeamId: 'B3' },
+            { id: 'mB1', phase: 'GROUP_R1', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B1', awayTeamId: 'B2' },
+            { id: 'mB2', phase: 'GROUP_R1', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B3', awayTeamId: 'B4' },
+            { id: 'mB3', phase: 'GROUP_R1', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B1', awayTeamId: 'B3' },
+            { id: 'mB4', phase: 'GROUP_R1', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B2', awayTeamId: 'B4' },
+            { id: 'mB5', phase: 'GROUP_R1', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B1', awayTeamId: 'B4' },
+            { id: 'mB6', phase: 'GROUP_R1', group: 'B', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'B2', awayTeamId: 'B3' },
         ];
         const r32: Match = {
             id: 'R32_A_B',
@@ -326,7 +327,7 @@ describe('resolveBracket', () => {
         };
         const third: Match = {
             id: 'THIRD',
-            phase: '3RD',
+            phase: 'THIRD',
             kickoffUtc: '2026-07-18T21:00:00Z',
             homeSlot: { kind: 'KNOCKOUT_LOSER', matchId: 'SF_A' },
             awaySlot: { kind: 'KNOCKOUT_LOSER', matchId: 'SF_B' },
@@ -352,7 +353,7 @@ describe('resolveBracket', () => {
 
     test('exercises BEST_THIRD_OF assignment when all 12 groups are complete', () => {
         // Arrange — synthetic 1-0 home win for every group match
-        const groupMatches = MATCHES.filter((m): m is GroupMatch => m.phase === 'GROUP');
+        const groupMatches = MATCHES.filter(isGroupMatch);
         const results = new Map<MatchId, Score>();
         for (const m of groupMatches) {
             results.set(m.id, { home: 1, away: 0 });
@@ -362,8 +363,11 @@ describe('resolveBracket', () => {
         const bracket = resolveBracket(TEAMS, MATCHES, results);
 
         // Assert — most BEST_THIRD_OF slots resolve (v1 greedy may leave 1 unfilled in tied scenarios)
-        const r32WithBestThird = MATCHES.filter((m) =>
-            m.phase === 'R32' && (m.homeSlot.kind === 'BEST_THIRD_OF' || m.awaySlot.kind === 'BEST_THIRD_OF'),
+        const r32WithBestThird = MATCHES.filter(
+            (m) =>
+                isKnockoutMatch(m) &&
+                m.phase === 'R32' &&
+                (m.homeSlot.kind === 'BEST_THIRD_OF' || m.awaySlot.kind === 'BEST_THIRD_OF'),
         );
         expect(r32WithBestThird).toHaveLength(8);
         const resolvedCount = r32WithBestThird.filter((m) => bracket.get(m.id) !== undefined).length;
@@ -372,7 +376,7 @@ describe('resolveBracket', () => {
 
     test('handles a knockout match with BEST_THIRD_OF in the home slot', () => {
         // Arrange — atypical bracket where the home side is the best-third
-        const groupMatches = MATCHES.filter((m): m is GroupMatch => m.phase === 'GROUP');
+        const groupMatches = MATCHES.filter(isGroupMatch);
         const results = new Map<MatchId, Score>();
         for (const m of groupMatches) {
             results.set(m.id, { home: 1, away: 0 });
@@ -399,7 +403,7 @@ describe('resolveBracket', () => {
 
     test('BEST_THIRD_OF slots receive teams from their eligible groups', () => {
         // Arrange — synthetic results so all 12 groups complete with deterministic standings
-        const groupMatches = MATCHES.filter((m): m is GroupMatch => m.phase === 'GROUP');
+        const groupMatches = MATCHES.filter(isGroupMatch);
         const results = new Map<MatchId, Score>();
         for (const m of groupMatches) {
             results.set(m.id, { home: 2, away: 1 });

@@ -1,7 +1,11 @@
 /** Admin UI — login + tabs for games, results, and players. */
 
 import { useEffect, useState } from 'react';
+import { PHASES } from '@shared/phases';
 import { api, ApiError, type GameSummary, type TournamentData } from '../api-client';
+import { Skeleton, useDelayedFlag } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
+import { matchSides } from '../lib/matchDisplay';
 
 type AdminTab = 'games' | 'results' | 'players';
 
@@ -14,12 +18,10 @@ export function Admin() {
             .catch(() => setLoggedIn(false));
     }, []);
 
+    const showSkeleton = useDelayedFlag(loggedIn === undefined, 300);
+
     if (loggedIn === undefined) {
-        return (
-            <main className="container">
-                <p>Loading…</p>
-            </main>
-        );
+        return <main className="container">{showSkeleton ? <Skeleton lines={3} /> : null}</main>;
     }
 
     return (
@@ -98,16 +100,16 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
             </nav>
             {tab === 'games' && <AdminGames />}
             {tab === 'results' && <AdminResults />}
-            {tab === 'players' && <p>Player management coming soon. Use the admin DELETE endpoint directly for now.</p>}
+            {tab === 'players' && <AdminPlayers />}
         </>
     );
 }
 
 function AdminGames() {
+    const { showToast } = useToast();
     const [games, setGames] = useState<GameSummary[]>([]);
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState<string | undefined>();
 
     const reload = async () => {
         const r = await api.listGames();
@@ -115,19 +117,19 @@ function AdminGames() {
     };
 
     useEffect(() => {
-        reload().catch((err: unknown) => setError(err instanceof Error ? err.message : 'load failed'));
+        reload().catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
     }, []);
 
     const onCreate = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(undefined);
         try {
             await api.adminCreateGame(name, password);
             setName('');
             setPassword('');
             await reload();
+            showToast('success', 'Game created');
         } catch (err) {
-            setError(err instanceof ApiError ? err.message : 'Failed to create');
+            showToast('error', err instanceof ApiError ? err.message : 'Failed to create');
         }
     };
 
@@ -156,7 +158,6 @@ function AdminGames() {
                         required
                     />
                 </label>
-                {error && <div className="error">{error}</div>}
                 <button type="submit">Create</button>
             </form>
         </>
@@ -164,33 +165,33 @@ function AdminGames() {
 }
 
 function AdminResults() {
+    const { showToast } = useToast();
     const [tournament, setTournament] = useState<TournamentData | undefined>();
-    const [selectedPhase, setSelectedPhase] = useState<string>('GROUP');
-    const [error, setError] = useState<string | undefined>();
+    const [selectedPhase, setSelectedPhase] = useState<string>('GROUP_R1');
     const [savingId, setSavingId] = useState<string | undefined>();
     const [drafts, setDrafts] = useState<Map<string, { home: number; away: number }>>(new Map());
 
     useEffect(() => {
         api.tournament()
             .then(setTournament)
-            .catch((err: unknown) => setError(err instanceof Error ? err.message : 'load failed'));
+            .catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
     }, []);
 
     const onSave = async (matchId: string) => {
         const draft = drafts.get(matchId);
         if (!draft) return;
         setSavingId(matchId);
-        setError(undefined);
         try {
             await api.adminSetResult(matchId, draft);
+            showToast('success', `Saved ${matchId}`);
         } catch (err) {
-            setError(err instanceof ApiError ? err.message : 'Failed to save');
+            showToast('error', err instanceof ApiError ? err.message : 'Failed to save');
         } finally {
             setSavingId(undefined);
         }
     };
 
-    const phases = ['GROUP', 'R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'];
+    const teams = tournament?.teams ?? [];
     const filtered = (tournament?.matches ?? []).filter((m) => m.phase === selectedPhase);
 
     return (
@@ -199,23 +200,27 @@ function AdminResults() {
             <label>
                 Phase{' '}
                 <select value={selectedPhase} onChange={(e) => setSelectedPhase(e.target.value)}>
-                    {phases.map((p) => (
-                        <option key={p} value={p}>
-                            {p}
+                    {PHASES.map((p) => (
+                        <option key={p.id} value={p.id}>
+                            {p.label}
                         </option>
                     ))}
                 </select>
             </label>
-            {error && <div className="error">{error}</div>}
             <ul>
                 {filtered.map((m) => {
                     const draft = drafts.get(m.id) ?? { home: 0, away: 0 };
+                    const sides = matchSides(m, teams);
 
                     return (
                         <li key={m.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0' }}>
                             <code>{m.id}</code>
+                            <span style={{ flex: 1 }}>
+                                {sides.home} vs {sides.away}
+                            </span>
                             <input
                                 type="number"
+                                inputMode="numeric"
                                 min={0}
                                 max={20}
                                 value={draft.home}
@@ -228,6 +233,7 @@ function AdminResults() {
                             <span>-</span>
                             <input
                                 type="number"
+                                inputMode="numeric"
                                 min={0}
                                 max={20}
                                 value={draft.away}
@@ -243,6 +249,75 @@ function AdminResults() {
                         </li>
                     );
                 })}
+            </ul>
+        </>
+    );
+}
+
+function AdminPlayers() {
+    const { showToast } = useToast();
+    const [games, setGames] = useState<GameSummary[]>([]);
+    const [selectedGameId, setSelectedGameId] = useState<string>('');
+    const [players, setPlayers] = useState<Array<{ id: number; displayName: string }>>([]);
+
+    useEffect(() => {
+        api.listGames()
+            .then((r) => {
+                setGames(r.games);
+                if (r.games[0]) setSelectedGameId(String(r.games[0].id));
+            })
+            .catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
+    }, []);
+
+    const loadPlayers = async (gameId: number) => {
+        const r = await api.adminListPlayers(gameId);
+        setPlayers(r.players);
+    };
+
+    useEffect(() => {
+        if (!selectedGameId) return;
+        loadPlayers(Number.parseInt(selectedGameId, 10)).catch((err: unknown) =>
+            showToast('error', err instanceof Error ? err.message : 'load failed'),
+        );
+    }, [selectedGameId]);
+
+    const onDelete = async (playerId: number) => {
+        try {
+            await api.adminDeletePlayer(playerId);
+            await loadPlayers(Number.parseInt(selectedGameId, 10));
+            showToast('success', 'Player removed');
+        } catch (err) {
+            showToast('error', err instanceof ApiError ? err.message : 'Failed to delete');
+        }
+    };
+
+    return (
+        <>
+            <h2>Players</h2>
+            {games.length === 0 ? (
+                <p>No games yet.</p>
+            ) : (
+                <label>
+                    Game{' '}
+                    <select value={selectedGameId} onChange={(e) => setSelectedGameId(e.target.value)}>
+                        {games.map((g) => (
+                            <option key={g.id} value={g.id}>
+                                {g.name}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            )}
+            {selectedGameId && players.length === 0 && <p>No players in this game yet.</p>}
+            <ul>
+                {players.map((p) => (
+                    <li key={p.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0' }}>
+                        <span>{p.displayName}</span>
+                        <button type="button" className="secondary" onClick={() => onDelete(p.id)}>
+                            Delete
+                        </button>
+                    </li>
+                ))}
             </ul>
         </>
     );

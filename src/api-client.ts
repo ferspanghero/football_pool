@@ -71,6 +71,10 @@ export const api = {
         }),
     adminDeletePlayer: (playerId: number) =>
         request<{ ok: true }>(`/api/admin/players/${playerId}`, { method: 'DELETE' }),
+    adminListPlayers: (gameId: number) =>
+        request<{ players: Array<{ id: number; displayName: string; championTeamId: TeamId | null }> }>(
+            `/api/admin/games/${gameId}/players`,
+        ),
 };
 
 type RequestOptions = { method?: string; body?: unknown };

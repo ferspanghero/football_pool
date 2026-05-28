@@ -7,7 +7,14 @@
  * mapping for the 48-team format.
  */
 
-import type { Team, Match } from '@shared/types';
+import type { GroupMatch, Match, PhaseId, Team } from '@shared/types';
+
+/** Group matches play 2 fixtures per round (ids `_1`..`_6`), so round = ceil(suffix / 2). */
+function groupRoundPhase(id: string): PhaseId {
+    const suffix = Number(id.split('_')[2]);
+
+    return `GROUP_R${Math.ceil(suffix / 2)}` as PhaseId;
+}
 
 /** All 48 qualified teams, grouped A-L. Each group has exactly 4 teams. */
 export const TEAMS: Team[] = [
@@ -72,91 +79,94 @@ export const TEAMS: Team[] = [
     { id: 'PAN', name: 'Panama', group: 'L' },
 ];
 
-const groupMatches: Match[] = [
-    { id: 'G_A_1', phase: 'GROUP', group: 'A', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'MEX', awayTeamId: 'RSA' },
-    { id: 'G_A_2', phase: 'GROUP', group: 'A', kickoffUtc: '2026-06-12T02:00:00Z', homeTeamId: 'KOR', awayTeamId: 'CZE' },
-    { id: 'G_A_3', phase: 'GROUP', group: 'A', kickoffUtc: '2026-06-18T16:00:00Z', homeTeamId: 'CZE', awayTeamId: 'RSA' },
-    { id: 'G_A_4', phase: 'GROUP', group: 'A', kickoffUtc: '2026-06-19T01:00:00Z', homeTeamId: 'MEX', awayTeamId: 'KOR' },
-    { id: 'G_A_5', phase: 'GROUP', group: 'A', kickoffUtc: '2026-06-25T01:00:00Z', homeTeamId: 'RSA', awayTeamId: 'KOR' },
-    { id: 'G_A_6', phase: 'GROUP', group: 'A', kickoffUtc: '2026-06-25T01:00:00Z', homeTeamId: 'CZE', awayTeamId: 'MEX' },
+const rawGroupMatches = [
+    { id: 'G_A_1', group: 'A', kickoffUtc: '2026-06-11T19:00:00Z', homeTeamId: 'MEX', awayTeamId: 'RSA' },
+    { id: 'G_A_2', group: 'A', kickoffUtc: '2026-06-12T02:00:00Z', homeTeamId: 'KOR', awayTeamId: 'CZE' },
+    { id: 'G_A_3', group: 'A', kickoffUtc: '2026-06-18T16:00:00Z', homeTeamId: 'CZE', awayTeamId: 'RSA' },
+    { id: 'G_A_4', group: 'A', kickoffUtc: '2026-06-19T01:00:00Z', homeTeamId: 'MEX', awayTeamId: 'KOR' },
+    { id: 'G_A_5', group: 'A', kickoffUtc: '2026-06-25T01:00:00Z', homeTeamId: 'RSA', awayTeamId: 'KOR' },
+    { id: 'G_A_6', group: 'A', kickoffUtc: '2026-06-25T01:00:00Z', homeTeamId: 'CZE', awayTeamId: 'MEX' },
 
-    { id: 'G_B_1', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-12T19:00:00Z', homeTeamId: 'CAN', awayTeamId: 'BIH' },
-    { id: 'G_B_2', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-13T19:00:00Z', homeTeamId: 'QAT', awayTeamId: 'SUI' },
-    { id: 'G_B_3', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-18T19:00:00Z', homeTeamId: 'SUI', awayTeamId: 'BIH' },
-    { id: 'G_B_4', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-18T22:00:00Z', homeTeamId: 'CAN', awayTeamId: 'QAT' },
-    { id: 'G_B_5', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-24T19:00:00Z', homeTeamId: 'SUI', awayTeamId: 'CAN' },
-    { id: 'G_B_6', phase: 'GROUP', group: 'B', kickoffUtc: '2026-06-24T19:00:00Z', homeTeamId: 'BIH', awayTeamId: 'QAT' },
+    { id: 'G_B_1', group: 'B', kickoffUtc: '2026-06-12T19:00:00Z', homeTeamId: 'CAN', awayTeamId: 'BIH' },
+    { id: 'G_B_2', group: 'B', kickoffUtc: '2026-06-13T19:00:00Z', homeTeamId: 'QAT', awayTeamId: 'SUI' },
+    { id: 'G_B_3', group: 'B', kickoffUtc: '2026-06-18T19:00:00Z', homeTeamId: 'SUI', awayTeamId: 'BIH' },
+    { id: 'G_B_4', group: 'B', kickoffUtc: '2026-06-18T22:00:00Z', homeTeamId: 'CAN', awayTeamId: 'QAT' },
+    { id: 'G_B_5', group: 'B', kickoffUtc: '2026-06-24T19:00:00Z', homeTeamId: 'SUI', awayTeamId: 'CAN' },
+    { id: 'G_B_6', group: 'B', kickoffUtc: '2026-06-24T19:00:00Z', homeTeamId: 'BIH', awayTeamId: 'QAT' },
 
-    { id: 'G_C_1', phase: 'GROUP', group: 'C', kickoffUtc: '2026-06-13T22:00:00Z', homeTeamId: 'BRA', awayTeamId: 'MAR' },
-    { id: 'G_C_2', phase: 'GROUP', group: 'C', kickoffUtc: '2026-06-14T01:00:00Z', homeTeamId: 'HAI', awayTeamId: 'SCO' },
-    { id: 'G_C_3', phase: 'GROUP', group: 'C', kickoffUtc: '2026-06-19T22:00:00Z', homeTeamId: 'SCO', awayTeamId: 'MAR' },
-    { id: 'G_C_4', phase: 'GROUP', group: 'C', kickoffUtc: '2026-06-20T00:30:00Z', homeTeamId: 'BRA', awayTeamId: 'HAI' },
-    { id: 'G_C_5', phase: 'GROUP', group: 'C', kickoffUtc: '2026-06-24T22:00:00Z', homeTeamId: 'MAR', awayTeamId: 'HAI' },
-    { id: 'G_C_6', phase: 'GROUP', group: 'C', kickoffUtc: '2026-06-24T22:00:00Z', homeTeamId: 'SCO', awayTeamId: 'BRA' },
+    { id: 'G_C_1', group: 'C', kickoffUtc: '2026-06-13T22:00:00Z', homeTeamId: 'BRA', awayTeamId: 'MAR' },
+    { id: 'G_C_2', group: 'C', kickoffUtc: '2026-06-14T01:00:00Z', homeTeamId: 'HAI', awayTeamId: 'SCO' },
+    { id: 'G_C_3', group: 'C', kickoffUtc: '2026-06-19T22:00:00Z', homeTeamId: 'SCO', awayTeamId: 'MAR' },
+    { id: 'G_C_4', group: 'C', kickoffUtc: '2026-06-20T00:30:00Z', homeTeamId: 'BRA', awayTeamId: 'HAI' },
+    { id: 'G_C_5', group: 'C', kickoffUtc: '2026-06-24T22:00:00Z', homeTeamId: 'MAR', awayTeamId: 'HAI' },
+    { id: 'G_C_6', group: 'C', kickoffUtc: '2026-06-24T22:00:00Z', homeTeamId: 'SCO', awayTeamId: 'BRA' },
 
-    { id: 'G_D_1', phase: 'GROUP', group: 'D', kickoffUtc: '2026-06-13T01:00:00Z', homeTeamId: 'USA', awayTeamId: 'PAR' },
-    { id: 'G_D_2', phase: 'GROUP', group: 'D', kickoffUtc: '2026-06-14T04:00:00Z', homeTeamId: 'AUS', awayTeamId: 'TUR' },
-    { id: 'G_D_3', phase: 'GROUP', group: 'D', kickoffUtc: '2026-06-19T19:00:00Z', homeTeamId: 'USA', awayTeamId: 'AUS' },
-    { id: 'G_D_4', phase: 'GROUP', group: 'D', kickoffUtc: '2026-06-20T03:00:00Z', homeTeamId: 'TUR', awayTeamId: 'PAR' },
-    { id: 'G_D_5', phase: 'GROUP', group: 'D', kickoffUtc: '2026-06-26T02:00:00Z', homeTeamId: 'TUR', awayTeamId: 'USA' },
-    { id: 'G_D_6', phase: 'GROUP', group: 'D', kickoffUtc: '2026-06-26T02:00:00Z', homeTeamId: 'PAR', awayTeamId: 'AUS' },
+    { id: 'G_D_1', group: 'D', kickoffUtc: '2026-06-13T01:00:00Z', homeTeamId: 'USA', awayTeamId: 'PAR' },
+    { id: 'G_D_2', group: 'D', kickoffUtc: '2026-06-14T04:00:00Z', homeTeamId: 'AUS', awayTeamId: 'TUR' },
+    { id: 'G_D_3', group: 'D', kickoffUtc: '2026-06-19T19:00:00Z', homeTeamId: 'USA', awayTeamId: 'AUS' },
+    { id: 'G_D_4', group: 'D', kickoffUtc: '2026-06-20T03:00:00Z', homeTeamId: 'TUR', awayTeamId: 'PAR' },
+    { id: 'G_D_5', group: 'D', kickoffUtc: '2026-06-26T02:00:00Z', homeTeamId: 'TUR', awayTeamId: 'USA' },
+    { id: 'G_D_6', group: 'D', kickoffUtc: '2026-06-26T02:00:00Z', homeTeamId: 'PAR', awayTeamId: 'AUS' },
 
-    { id: 'G_E_1', phase: 'GROUP', group: 'E', kickoffUtc: '2026-06-14T17:00:00Z', homeTeamId: 'GER', awayTeamId: 'CUW' },
-    { id: 'G_E_2', phase: 'GROUP', group: 'E', kickoffUtc: '2026-06-14T23:00:00Z', homeTeamId: 'CIV', awayTeamId: 'ECU' },
-    { id: 'G_E_3', phase: 'GROUP', group: 'E', kickoffUtc: '2026-06-20T20:00:00Z', homeTeamId: 'GER', awayTeamId: 'CIV' },
-    { id: 'G_E_4', phase: 'GROUP', group: 'E', kickoffUtc: '2026-06-21T00:00:00Z', homeTeamId: 'ECU', awayTeamId: 'CUW' },
-    { id: 'G_E_5', phase: 'GROUP', group: 'E', kickoffUtc: '2026-06-25T20:00:00Z', homeTeamId: 'CUW', awayTeamId: 'CIV' },
-    { id: 'G_E_6', phase: 'GROUP', group: 'E', kickoffUtc: '2026-06-25T20:00:00Z', homeTeamId: 'ECU', awayTeamId: 'GER' },
+    { id: 'G_E_1', group: 'E', kickoffUtc: '2026-06-14T17:00:00Z', homeTeamId: 'GER', awayTeamId: 'CUW' },
+    { id: 'G_E_2', group: 'E', kickoffUtc: '2026-06-14T23:00:00Z', homeTeamId: 'CIV', awayTeamId: 'ECU' },
+    { id: 'G_E_3', group: 'E', kickoffUtc: '2026-06-20T20:00:00Z', homeTeamId: 'GER', awayTeamId: 'CIV' },
+    { id: 'G_E_4', group: 'E', kickoffUtc: '2026-06-21T00:00:00Z', homeTeamId: 'ECU', awayTeamId: 'CUW' },
+    { id: 'G_E_5', group: 'E', kickoffUtc: '2026-06-25T20:00:00Z', homeTeamId: 'CUW', awayTeamId: 'CIV' },
+    { id: 'G_E_6', group: 'E', kickoffUtc: '2026-06-25T20:00:00Z', homeTeamId: 'ECU', awayTeamId: 'GER' },
 
-    { id: 'G_F_1', phase: 'GROUP', group: 'F', kickoffUtc: '2026-06-14T20:00:00Z', homeTeamId: 'NED', awayTeamId: 'JPN' },
-    { id: 'G_F_2', phase: 'GROUP', group: 'F', kickoffUtc: '2026-06-15T02:00:00Z', homeTeamId: 'SWE', awayTeamId: 'TUN' },
-    { id: 'G_F_3', phase: 'GROUP', group: 'F', kickoffUtc: '2026-06-20T17:00:00Z', homeTeamId: 'NED', awayTeamId: 'SWE' },
-    { id: 'G_F_4', phase: 'GROUP', group: 'F', kickoffUtc: '2026-06-21T04:00:00Z', homeTeamId: 'TUN', awayTeamId: 'JPN' },
-    { id: 'G_F_5', phase: 'GROUP', group: 'F', kickoffUtc: '2026-06-25T23:00:00Z', homeTeamId: 'TUN', awayTeamId: 'NED' },
-    { id: 'G_F_6', phase: 'GROUP', group: 'F', kickoffUtc: '2026-06-25T23:00:00Z', homeTeamId: 'JPN', awayTeamId: 'SWE' },
+    { id: 'G_F_1', group: 'F', kickoffUtc: '2026-06-14T20:00:00Z', homeTeamId: 'NED', awayTeamId: 'JPN' },
+    { id: 'G_F_2', group: 'F', kickoffUtc: '2026-06-15T02:00:00Z', homeTeamId: 'SWE', awayTeamId: 'TUN' },
+    { id: 'G_F_3', group: 'F', kickoffUtc: '2026-06-20T17:00:00Z', homeTeamId: 'NED', awayTeamId: 'SWE' },
+    { id: 'G_F_4', group: 'F', kickoffUtc: '2026-06-21T04:00:00Z', homeTeamId: 'TUN', awayTeamId: 'JPN' },
+    { id: 'G_F_5', group: 'F', kickoffUtc: '2026-06-25T23:00:00Z', homeTeamId: 'TUN', awayTeamId: 'NED' },
+    { id: 'G_F_6', group: 'F', kickoffUtc: '2026-06-25T23:00:00Z', homeTeamId: 'JPN', awayTeamId: 'SWE' },
 
-    { id: 'G_G_1', phase: 'GROUP', group: 'G', kickoffUtc: '2026-06-15T19:00:00Z', homeTeamId: 'BEL', awayTeamId: 'EGY' },
-    { id: 'G_G_2', phase: 'GROUP', group: 'G', kickoffUtc: '2026-06-16T01:00:00Z', homeTeamId: 'IRN', awayTeamId: 'NZL' },
-    { id: 'G_G_3', phase: 'GROUP', group: 'G', kickoffUtc: '2026-06-21T19:00:00Z', homeTeamId: 'BEL', awayTeamId: 'IRN' },
-    { id: 'G_G_4', phase: 'GROUP', group: 'G', kickoffUtc: '2026-06-22T01:00:00Z', homeTeamId: 'NZL', awayTeamId: 'EGY' },
-    { id: 'G_G_5', phase: 'GROUP', group: 'G', kickoffUtc: '2026-06-27T03:00:00Z', homeTeamId: 'NZL', awayTeamId: 'BEL' },
-    { id: 'G_G_6', phase: 'GROUP', group: 'G', kickoffUtc: '2026-06-27T03:00:00Z', homeTeamId: 'EGY', awayTeamId: 'IRN' },
+    { id: 'G_G_1', group: 'G', kickoffUtc: '2026-06-15T19:00:00Z', homeTeamId: 'BEL', awayTeamId: 'EGY' },
+    { id: 'G_G_2', group: 'G', kickoffUtc: '2026-06-16T01:00:00Z', homeTeamId: 'IRN', awayTeamId: 'NZL' },
+    { id: 'G_G_3', group: 'G', kickoffUtc: '2026-06-21T19:00:00Z', homeTeamId: 'BEL', awayTeamId: 'IRN' },
+    { id: 'G_G_4', group: 'G', kickoffUtc: '2026-06-22T01:00:00Z', homeTeamId: 'NZL', awayTeamId: 'EGY' },
+    { id: 'G_G_5', group: 'G', kickoffUtc: '2026-06-27T03:00:00Z', homeTeamId: 'NZL', awayTeamId: 'BEL' },
+    { id: 'G_G_6', group: 'G', kickoffUtc: '2026-06-27T03:00:00Z', homeTeamId: 'EGY', awayTeamId: 'IRN' },
 
-    { id: 'G_H_1', phase: 'GROUP', group: 'H', kickoffUtc: '2026-06-15T16:00:00Z', homeTeamId: 'ESP', awayTeamId: 'CPV' },
-    { id: 'G_H_2', phase: 'GROUP', group: 'H', kickoffUtc: '2026-06-15T22:00:00Z', homeTeamId: 'KSA', awayTeamId: 'URU' },
-    { id: 'G_H_3', phase: 'GROUP', group: 'H', kickoffUtc: '2026-06-21T16:00:00Z', homeTeamId: 'ESP', awayTeamId: 'KSA' },
-    { id: 'G_H_4', phase: 'GROUP', group: 'H', kickoffUtc: '2026-06-21T22:00:00Z', homeTeamId: 'URU', awayTeamId: 'CPV' },
-    { id: 'G_H_5', phase: 'GROUP', group: 'H', kickoffUtc: '2026-06-27T00:00:00Z', homeTeamId: 'CPV', awayTeamId: 'KSA' },
-    { id: 'G_H_6', phase: 'GROUP', group: 'H', kickoffUtc: '2026-06-27T00:00:00Z', homeTeamId: 'URU', awayTeamId: 'ESP' },
+    { id: 'G_H_1', group: 'H', kickoffUtc: '2026-06-15T16:00:00Z', homeTeamId: 'ESP', awayTeamId: 'CPV' },
+    { id: 'G_H_2', group: 'H', kickoffUtc: '2026-06-15T22:00:00Z', homeTeamId: 'KSA', awayTeamId: 'URU' },
+    { id: 'G_H_3', group: 'H', kickoffUtc: '2026-06-21T16:00:00Z', homeTeamId: 'ESP', awayTeamId: 'KSA' },
+    { id: 'G_H_4', group: 'H', kickoffUtc: '2026-06-21T22:00:00Z', homeTeamId: 'URU', awayTeamId: 'CPV' },
+    { id: 'G_H_5', group: 'H', kickoffUtc: '2026-06-27T00:00:00Z', homeTeamId: 'CPV', awayTeamId: 'KSA' },
+    { id: 'G_H_6', group: 'H', kickoffUtc: '2026-06-27T00:00:00Z', homeTeamId: 'URU', awayTeamId: 'ESP' },
 
-    { id: 'G_I_1', phase: 'GROUP', group: 'I', kickoffUtc: '2026-06-16T19:00:00Z', homeTeamId: 'FRA', awayTeamId: 'SEN' },
-    { id: 'G_I_2', phase: 'GROUP', group: 'I', kickoffUtc: '2026-06-16T22:00:00Z', homeTeamId: 'IRQ', awayTeamId: 'NOR' },
-    { id: 'G_I_3', phase: 'GROUP', group: 'I', kickoffUtc: '2026-06-22T21:00:00Z', homeTeamId: 'FRA', awayTeamId: 'IRQ' },
-    { id: 'G_I_4', phase: 'GROUP', group: 'I', kickoffUtc: '2026-06-23T00:00:00Z', homeTeamId: 'NOR', awayTeamId: 'SEN' },
-    { id: 'G_I_5', phase: 'GROUP', group: 'I', kickoffUtc: '2026-06-26T19:00:00Z', homeTeamId: 'NOR', awayTeamId: 'FRA' },
-    { id: 'G_I_6', phase: 'GROUP', group: 'I', kickoffUtc: '2026-06-26T19:00:00Z', homeTeamId: 'SEN', awayTeamId: 'IRQ' },
+    { id: 'G_I_1', group: 'I', kickoffUtc: '2026-06-16T19:00:00Z', homeTeamId: 'FRA', awayTeamId: 'SEN' },
+    { id: 'G_I_2', group: 'I', kickoffUtc: '2026-06-16T22:00:00Z', homeTeamId: 'IRQ', awayTeamId: 'NOR' },
+    { id: 'G_I_3', group: 'I', kickoffUtc: '2026-06-22T21:00:00Z', homeTeamId: 'FRA', awayTeamId: 'IRQ' },
+    { id: 'G_I_4', group: 'I', kickoffUtc: '2026-06-23T00:00:00Z', homeTeamId: 'NOR', awayTeamId: 'SEN' },
+    { id: 'G_I_5', group: 'I', kickoffUtc: '2026-06-26T19:00:00Z', homeTeamId: 'NOR', awayTeamId: 'FRA' },
+    { id: 'G_I_6', group: 'I', kickoffUtc: '2026-06-26T19:00:00Z', homeTeamId: 'SEN', awayTeamId: 'IRQ' },
 
-    { id: 'G_J_1', phase: 'GROUP', group: 'J', kickoffUtc: '2026-06-17T01:00:00Z', homeTeamId: 'ARG', awayTeamId: 'ALG' },
-    { id: 'G_J_2', phase: 'GROUP', group: 'J', kickoffUtc: '2026-06-17T04:00:00Z', homeTeamId: 'AUT', awayTeamId: 'JOR' },
-    { id: 'G_J_3', phase: 'GROUP', group: 'J', kickoffUtc: '2026-06-22T17:00:00Z', homeTeamId: 'ARG', awayTeamId: 'AUT' },
-    { id: 'G_J_4', phase: 'GROUP', group: 'J', kickoffUtc: '2026-06-23T03:00:00Z', homeTeamId: 'JOR', awayTeamId: 'ALG' },
-    { id: 'G_J_5', phase: 'GROUP', group: 'J', kickoffUtc: '2026-06-28T02:00:00Z', homeTeamId: 'ALG', awayTeamId: 'AUT' },
-    { id: 'G_J_6', phase: 'GROUP', group: 'J', kickoffUtc: '2026-06-28T02:00:00Z', homeTeamId: 'JOR', awayTeamId: 'ARG' },
+    { id: 'G_J_1', group: 'J', kickoffUtc: '2026-06-17T01:00:00Z', homeTeamId: 'ARG', awayTeamId: 'ALG' },
+    { id: 'G_J_2', group: 'J', kickoffUtc: '2026-06-17T04:00:00Z', homeTeamId: 'AUT', awayTeamId: 'JOR' },
+    { id: 'G_J_3', group: 'J', kickoffUtc: '2026-06-22T17:00:00Z', homeTeamId: 'ARG', awayTeamId: 'AUT' },
+    { id: 'G_J_4', group: 'J', kickoffUtc: '2026-06-23T03:00:00Z', homeTeamId: 'JOR', awayTeamId: 'ALG' },
+    { id: 'G_J_5', group: 'J', kickoffUtc: '2026-06-28T02:00:00Z', homeTeamId: 'ALG', awayTeamId: 'AUT' },
+    { id: 'G_J_6', group: 'J', kickoffUtc: '2026-06-28T02:00:00Z', homeTeamId: 'JOR', awayTeamId: 'ARG' },
 
-    { id: 'G_K_1', phase: 'GROUP', group: 'K', kickoffUtc: '2026-06-17T17:00:00Z', homeTeamId: 'POR', awayTeamId: 'COD' },
-    { id: 'G_K_2', phase: 'GROUP', group: 'K', kickoffUtc: '2026-06-18T02:00:00Z', homeTeamId: 'UZB', awayTeamId: 'COL' },
-    { id: 'G_K_3', phase: 'GROUP', group: 'K', kickoffUtc: '2026-06-23T17:00:00Z', homeTeamId: 'POR', awayTeamId: 'UZB' },
-    { id: 'G_K_4', phase: 'GROUP', group: 'K', kickoffUtc: '2026-06-24T02:00:00Z', homeTeamId: 'COL', awayTeamId: 'COD' },
-    { id: 'G_K_5', phase: 'GROUP', group: 'K', kickoffUtc: '2026-06-27T23:30:00Z', homeTeamId: 'COL', awayTeamId: 'POR' },
-    { id: 'G_K_6', phase: 'GROUP', group: 'K', kickoffUtc: '2026-06-27T23:30:00Z', homeTeamId: 'COD', awayTeamId: 'UZB' },
+    { id: 'G_K_1', group: 'K', kickoffUtc: '2026-06-17T17:00:00Z', homeTeamId: 'POR', awayTeamId: 'COD' },
+    { id: 'G_K_2', group: 'K', kickoffUtc: '2026-06-18T02:00:00Z', homeTeamId: 'UZB', awayTeamId: 'COL' },
+    { id: 'G_K_3', group: 'K', kickoffUtc: '2026-06-23T17:00:00Z', homeTeamId: 'POR', awayTeamId: 'UZB' },
+    { id: 'G_K_4', group: 'K', kickoffUtc: '2026-06-24T02:00:00Z', homeTeamId: 'COL', awayTeamId: 'COD' },
+    { id: 'G_K_5', group: 'K', kickoffUtc: '2026-06-27T23:30:00Z', homeTeamId: 'COL', awayTeamId: 'POR' },
+    { id: 'G_K_6', group: 'K', kickoffUtc: '2026-06-27T23:30:00Z', homeTeamId: 'COD', awayTeamId: 'UZB' },
 
-    { id: 'G_L_1', phase: 'GROUP', group: 'L', kickoffUtc: '2026-06-17T20:00:00Z', homeTeamId: 'ENG', awayTeamId: 'CRO' },
-    { id: 'G_L_2', phase: 'GROUP', group: 'L', kickoffUtc: '2026-06-17T23:00:00Z', homeTeamId: 'GHA', awayTeamId: 'PAN' },
-    { id: 'G_L_3', phase: 'GROUP', group: 'L', kickoffUtc: '2026-06-23T20:00:00Z', homeTeamId: 'ENG', awayTeamId: 'GHA' },
-    { id: 'G_L_4', phase: 'GROUP', group: 'L', kickoffUtc: '2026-06-23T23:00:00Z', homeTeamId: 'PAN', awayTeamId: 'CRO' },
-    { id: 'G_L_5', phase: 'GROUP', group: 'L', kickoffUtc: '2026-06-27T21:00:00Z', homeTeamId: 'PAN', awayTeamId: 'ENG' },
-    { id: 'G_L_6', phase: 'GROUP', group: 'L', kickoffUtc: '2026-06-27T21:00:00Z', homeTeamId: 'CRO', awayTeamId: 'GHA' },
-];
+    { id: 'G_L_1', group: 'L', kickoffUtc: '2026-06-17T20:00:00Z', homeTeamId: 'ENG', awayTeamId: 'CRO' },
+    { id: 'G_L_2', group: 'L', kickoffUtc: '2026-06-17T23:00:00Z', homeTeamId: 'GHA', awayTeamId: 'PAN' },
+    { id: 'G_L_3', group: 'L', kickoffUtc: '2026-06-23T20:00:00Z', homeTeamId: 'ENG', awayTeamId: 'GHA' },
+    { id: 'G_L_4', group: 'L', kickoffUtc: '2026-06-23T23:00:00Z', homeTeamId: 'PAN', awayTeamId: 'CRO' },
+    { id: 'G_L_5', group: 'L', kickoffUtc: '2026-06-27T21:00:00Z', homeTeamId: 'PAN', awayTeamId: 'ENG' },
+    { id: 'G_L_6', group: 'L', kickoffUtc: '2026-06-27T21:00:00Z', homeTeamId: 'CRO', awayTeamId: 'GHA' },
+] as const;
+
+/** Group matches with their round-derived phase assigned at construction. */
+const groupMatches: GroupMatch[] = rawGroupMatches.map((m) => ({ ...m, phase: groupRoundPhase(m.id) }));
 
 const knockoutMatches: Match[] = [
     { id: 'M73', phase: 'R32', kickoffUtc: '2026-06-28T19:00:00Z',
@@ -253,7 +263,7 @@ const knockoutMatches: Match[] = [
         homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M99' },
         awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M100' } },
 
-    { id: 'M103', phase: '3RD', kickoffUtc: '2026-07-18T21:00:00Z',
+    { id: 'M103', phase: 'THIRD', kickoffUtc: '2026-07-18T21:00:00Z',
         homeSlot: { kind: 'KNOCKOUT_LOSER', matchId: 'M101' },
         awaySlot: { kind: 'KNOCKOUT_LOSER', matchId: 'M102' } },
 

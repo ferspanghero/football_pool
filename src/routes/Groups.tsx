@@ -1,8 +1,9 @@
 /** Groups tab — 12 group cards with team list and group matches. */
 
 import { useOutletContext } from 'react-router-dom';
+import { isGroupMatch } from '@shared/phases';
 import type { GameContextValue } from './GameLayout';
-import type { GroupLetter, Team } from '@shared/types';
+import type { GroupLetter, GroupMatch, Team } from '@shared/types';
 
 const ALL_GROUPS: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -14,17 +15,14 @@ export function Groups() {
         list.push(t);
         teamsByGroup.set(t.group, list);
     }
-    const matchesByGroup = ctx.tournament.matches.reduce<Record<string, typeof ctx.tournament.matches>>(
-        (acc, m) => {
-            if (m.phase !== 'GROUP') return acc;
-            const list = acc[m.group] ?? [];
-            list.push(m);
-            acc[m.group] = list;
+    const matchesByGroup = ctx.tournament.matches.reduce<Record<string, GroupMatch[]>>((acc, m) => {
+        if (!isGroupMatch(m)) return acc;
+        const list = acc[m.group] ?? [];
+        list.push(m);
+        acc[m.group] = list;
 
-            return acc;
-        },
-        {},
-    );
+        return acc;
+    }, {});
 
     return (
         <>

@@ -1,20 +1,13 @@
-/** Knockouts tab — vertical list grouped by phase. */
+/** Knockouts tab — read-only overview, grouped by phase, with slot labels and open/locked badges. */
 
 import { useOutletContext } from 'react-router-dom';
+import { PHASES, isKnockoutMatch } from '@shared/phases';
 import { formatKickoff } from '@shared/time';
+import { slotLabel } from '../lib/matchDisplay';
 import type { GameContextValue } from './GameLayout';
-import type { BracketSlot, Phase } from '@shared/types';
+import type { KnockoutMatch } from '@shared/types';
 
-const KNOCKOUT_PHASES: Phase[] = ['R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'];
-const PHASE_LABEL: Record<Phase, string> = {
-    GROUP: 'Group',
-    R32: 'Round of 32',
-    R16: 'Round of 16',
-    QF: 'Quarter-finals',
-    SF: 'Semi-finals',
-    '3RD': '3rd-place playoff',
-    FINAL: 'Final',
-};
+const KNOCKOUT_PHASES = PHASES.filter((p) => p.stage === 'KNOCKOUT');
 
 export function Knockouts() {
     const ctx = useOutletContext<GameContextValue>();
@@ -25,14 +18,13 @@ export function Knockouts() {
         <>
             <h2>Knockouts</h2>
             {KNOCKOUT_PHASES.map((phase) => {
-                const rows = matches.filter((m) => m.phase === phase);
+                const rows = matches.filter((m): m is KnockoutMatch => isKnockoutMatch(m) && m.phase === phase.id);
 
                 return (
-                    <section key={phase}>
-                        <h3>{PHASE_LABEL[phase]}</h3>
+                    <section key={phase.id}>
+                        <h3>{phase.label}</h3>
                         <ul>
                             {rows.map((m) => {
-                                if (m.phase === 'GROUP') return null;
                                 const locked = Date.parse(m.kickoffUtc) <= now;
 
                                 return (
@@ -51,19 +43,4 @@ export function Knockouts() {
             })}
         </>
     );
-}
-
-function slotLabel(slot: BracketSlot): string {
-    switch (slot.kind) {
-        case 'GROUP_WINNER':
-            return `Winner of Group ${slot.group}`;
-        case 'GROUP_RUNNER_UP':
-            return `Runner-up of Group ${slot.group}`;
-        case 'BEST_THIRD_OF':
-            return `Best 3rd from ${slot.eligibleGroups.join('/')}`;
-        case 'KNOCKOUT_WINNER':
-            return `Winner of ${slot.matchId}`;
-        case 'KNOCKOUT_LOSER':
-            return `Loser of ${slot.matchId}`;
-    }
 }

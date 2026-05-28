@@ -38,15 +38,24 @@ test('admin creates game → player predicts → result recorded → leaderboard
     await playerPage.getByLabel('Display name').fill(DISPLAY_NAME);
     await playerPage.getByRole('button', { name: 'Enter game' }).click();
 
-    // Match row: Mexico vs South Africa
-    const matchRow = playerPage.locator('.match-row', { hasText: 'Mexico vs South Africa' });
-    await expect(matchRow).toBeVisible();
-    const numberInputs = matchRow.locator('input[type="number"]');
-    await numberInputs.nth(0).fill('2');
-    await numberInputs.nth(1).fill('1');
-    const saveBtn = matchRow.getByRole('button');
+    // My picks opens on the current phase — pre-tournament, that's Group Stage Round 1.
+    await expect(playerPage.getByRole('heading', { name: 'Group Stage — Round 1' })).toBeVisible();
+
+    // Predict G_A_1 (Mexico vs South Africa) 2-1.
+    const homeInput = playerPage.locator('input[data-match="G_A_1"]').nth(0);
+    const awayInput = playerPage.locator('input[data-match="G_A_1"]').nth(1);
+    const saveBtn = playerPage.locator('button[data-match="G_A_1"]');
+    await expect(homeInput).toBeVisible();
+    await homeInput.fill('2');
+    await awayInput.fill('1');
     await saveBtn.click();
     await expect(saveBtn).toContainText('Saved');
+
+    // Phase navigation: forward to Round 2 and back.
+    await playerPage.getByRole('button', { name: 'Next phase' }).click();
+    await expect(playerPage.getByRole('heading', { name: 'Group Stage — Round 2' })).toBeVisible();
+    await playerPage.getByRole('button', { name: 'Previous phase' }).click();
+    await expect(playerPage.getByRole('heading', { name: 'Group Stage — Round 1' })).toBeVisible();
 
     // === Admin: record the actual result 2-1 for G_A_1 ===
     await adminPage.getByRole('link', { name: 'Results' }).click();

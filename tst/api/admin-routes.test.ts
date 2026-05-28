@@ -340,3 +340,52 @@ describe('DELETE /api/admin/games/:id', () => {
         expect(res.status).toBe(400);
     });
 });
+
+describe('GET /api/admin/games/:id/players', () => {
+    test('returns the players in the game', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Bob' });
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await app.request(`/api/admin/games/${game.id}/players`, { headers: { Cookie: cookie } }, env);
+
+        // Assert
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as { players: Array<{ id: number; displayName: string }> };
+        expect(body.players.map((p) => p.displayName).sort()).toEqual(['Alice', 'Bob']);
+    });
+
+    test('rejects with 401 without admin session', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/admin/games/${game.id}/players`, {}, env);
+
+        // Assert
+        expect(res.status).toBe(401);
+    });
+
+    test('rejects with 400 on an invalid game id', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await app.request('/api/admin/games/not-a-number/players', { headers: { Cookie: cookie } }, env);
+
+        // Assert
+        expect(res.status).toBe(400);
+    });
+});

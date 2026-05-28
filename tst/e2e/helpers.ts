@@ -49,14 +49,6 @@ async function authAdmin(page: Page): Promise<void> {
     expect(res.ok()).toBeTruthy();
 }
 
-/** Log in as admin through the `/admin` form, leaving the page on the admin panel. */
-export async function loginAdminUi(page: Page): Promise<void> {
-    await page.goto('/admin');
-    await page.getByLabel('Admin password').fill(ADMIN_PW);
-    await page.getByRole('button', { name: 'Log in' }).click();
-    await expect(page.getByText(/Create new game/)).toBeVisible();
-}
-
 /**
  * Set the server clock via the test endpoint. Re-authenticates first: a session cookie's
  * expiry is relative to the clock when it was issued, so a previous FIXED jump may have aged

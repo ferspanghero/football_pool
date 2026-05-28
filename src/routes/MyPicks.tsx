@@ -1,53 +1,163 @@
-/** "My picks" tab — champion banner + upcoming match inputs + past matches with points. */
+/**
+ * "My picks" tab — the prediction surface. A pinned champion banner, then one phase at a time
+ * (◀ ▶ navigation, defaulting to the current phase), with that phase's matches laid out in
+ * per-day cards. Open matches show score inputs; matches whose kickoff has passed are read-only.
+ */
 
 import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api, ApiError } from '../api-client';
-import { formatKickoff } from '@shared/time';
+import { buildPhaseGroups, currentPhaseIndex, isGroupMatch } from '@shared/phases';
+import { formatKickoffDate, formatKickoffTime } from '@shared/time';
+import { matchSides } from '../lib/matchDisplay';
 import type { GameContextValue } from './GameLayout';
-import type { MatchId } from '@shared/types';
+import type { Match, MatchId, Score } from '@shared/types';
 
 export function MyPicks() {
     const ctx = useOutletContext<GameContextValue>();
     const now = Date.now();
-    const firstKickoff = Date.parse(ctx.tournament.firstKickoffUtc);
-    const championLocked = now >= firstKickoff;
-    const upcoming = ctx.tournament.matches.filter((m) => Date.parse(m.kickoffUtc) > now);
-    const past = ctx.tournament.matches.filter((m) => Date.parse(m.kickoffUtc) <= now);
+    const phaseGroups = useMemo(() => buildPhaseGroups(ctx.tournament.matches), [ctx.tournament.matches]);
+    const [phaseIdx, setPhaseIdx] = useState(() => currentPhaseIndex(phaseGroups, Date.now()));
     const predictionByMatch = useMemo(
         () => new Map(ctx.me.predictions.map((p) => [p.matchId, p.score])),
         [ctx.me.predictions],
     );
+    const championLocked = now >= Date.parse(ctx.tournament.firstKickoffUtc);
+    const group = phaseGroups[phaseIdx];
 
     return (
         <>
             <ChampionBanner locked={championLocked} />
-            <h2>Upcoming matches</h2>
-            {upcoming.length === 0 && <p>No upcoming matches.</p>}
-            {upcoming.slice(0, 30).map((m) => (
-                <UpcomingMatchRow
-                    key={m.id}
-                    matchId={m.id}
-                    label={matchLabel(m, ctx.tournament)}
-                    kickoffUtc={m.kickoffUtc}
-                    initial={predictionByMatch.get(m.id) ?? { home: 0, away: 0 }}
-                    hasInitial={predictionByMatch.has(m.id)}
-                />
-            ))}
-            <h2>Past matches</h2>
-            {past.length === 0 && <p>No matches yet.</p>}
-            <ul>
-                {past.slice(-10).reverse().map((m) => {
-                    const pred = predictionByMatch.get(m.id);
 
-                    return (
-                        <li key={m.id}>
-                            {matchLabel(m, ctx.tournament)} · {formatKickoff(m.kickoffUtc)} ·{' '}
-                            {pred ? `you: ${pred.home}-${pred.away}` : 'no pick'}
-                        </li>
-                    );
-                })}
-            </ul>
+            <div className="phase-nav">
+                <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setPhaseIdx((i) => i - 1)}
+                    disabled={phaseIdx <= 0}
+                    aria-label="Previous phase"
+                >
+                    ‹
+                </button>
+                <h2>{group?.phase.label ?? 'No matches'}</h2>
+                <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setPhaseIdx((i) => i + 1)}
+                    disabled={phaseIdx >= phaseGroups.length - 1}
+                    aria-label="Next phase"
+                >
+                    ›
+                </button>
+            </div>
+
+            {group?.matches &&
+                groupByDay(group.matches).map(({ date, matches }) => (
+                    <section key={date} className="day-card">
+                        <h3>{date}</h3>
+                        <div className="picks-grid">
+                            {matches.map((m) => {
+                                const sides = matchSides(m, ctx.tournament.teams);
+                                const prefix = isGroupMatch(m) ? `Group ${m.group}` : '';
+                                const time = formatKickoffTime(m.kickoffUtc);
+                                const pick = predictionByMatch.get(m.id);
+
+                                return Date.parse(m.kickoffUtc) <= now ? (
+                                    <LockedRow key={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} />
+                                ) : (
+                                    <OpenRow key={m.id} matchId={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} />
+                                );
+                            })}
+                        </div>
+                    </section>
+                ))}
+        </>
+    );
+}
+
+/** Group a phase's (kickoff-sorted) matches into day buckets, preserving chronological order. */
+function groupByDay(matches: ReadonlyArray<Match>): { date: string; matches: Match[] }[] {
+    const order: string[] = [];
+    const byDate = new Map<string, Match[]>();
+    for (const m of matches) {
+        const date = formatKickoffDate(m.kickoffUtc);
+        const list = byDate.get(date);
+        if (list) {
+            list.push(m);
+        } else {
+            byDate.set(date, [m]);
+            order.push(date);
+        }
+    }
+
+    return order.map((date) => ({ date, matches: byDate.get(date)! }));
+}
+
+type RowProps = { prefix: string; home: string; away: string; pick: Score | undefined; time: string };
+
+/** A read-only match row (kickoff has passed): shows the saved pick and a "locked" badge. */
+function LockedRow({ prefix, home, away, pick, time }: RowProps) {
+    return (
+        <>
+            <span className="pick-status">
+                <span className="badge locked">locked</span>
+            </span>
+            <span className="pick-prefix">{prefix}</span>
+            <span className="pick-team home">{home}</span>
+            <span className="pick-val">{pick ? pick.home : '–'}</span>
+            <span className="pick-dash">-</span>
+            <span className="pick-val">{pick ? pick.away : '–'}</span>
+            <span className="pick-team away">{away}</span>
+            <span className="pick-action" />
+            <time className="pick-time">{time}</time>
+        </>
+    );
+}
+
+/** An editable match row (still open): score inputs, a Save button, and an "open" badge. */
+function OpenRow({ matchId, prefix, home, away, pick, time }: RowProps & { matchId: MatchId }) {
+    const [homeGoals, setHomeGoals] = useState(pick?.home ?? 0);
+    const [awayGoals, setAwayGoals] = useState(pick?.away ?? 0);
+    const [saved, setSaved] = useState(pick !== undefined);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | undefined>();
+
+    const onSave = async () => {
+        setSaving(true);
+        setError(undefined);
+        try {
+            await api.savePrediction(matchId, { home: homeGoals, away: awayGoals });
+            setSaved(true);
+        } catch (err) {
+            setError(saveErrorMessage(err, 'This match has locked (kickoff passed). Refresh the page to see the latest.'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const onChange = (set: (n: number) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        set(Number(e.target.value));
+        setSaved(false);
+    };
+
+    return (
+        <>
+            <span className="pick-status">
+                <span className="badge">open</span>
+            </span>
+            <span className="pick-prefix">{prefix}</span>
+            <span className="pick-team home">{home}</span>
+            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} />
+            <span className="pick-dash">-</span>
+            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} />
+            <span className="pick-team away">{away}</span>
+            <span className="pick-action">
+                <button type="button" data-match={matchId} onClick={onSave} disabled={saving}>
+                    {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+                </button>
+            </span>
+            <time className="pick-time">{time}</time>
+            {error && <div className="pick-error">{error}</div>}
         </>
     );
 }
@@ -96,96 +206,13 @@ function ChampionBanner({ locked }: { locked: boolean }) {
     );
 }
 
-function UpcomingMatchRow({
-    matchId,
-    label,
-    kickoffUtc,
-    initial,
-    hasInitial,
-}: {
-    matchId: MatchId;
-    label: string;
-    kickoffUtc: string;
-    initial: { home: number; away: number };
-    hasInitial: boolean;
-}) {
-    const [home, setHome] = useState(initial.home);
-    const [away, setAway] = useState(initial.away);
-    const [saved, setSaved] = useState(hasInitial);
-    const [error, setError] = useState<string | undefined>();
-    const [saving, setSaving] = useState(false);
-
-    const onSave = async () => {
-        setSaving(true);
-        setError(undefined);
-        try {
-            await api.savePrediction(matchId, { home, away });
-            setSaved(true);
-        } catch (err) {
-            setError(saveErrorMessage(err, 'This match has locked (kickoff passed). Refresh the page to see the latest.'));
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    return (
-        <div className="match-row">
-            <span>{label}</span>
-            <span className="score">
-                <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={20}
-                    value={home}
-                    onChange={(e) => {
-                        setHome(Number(e.target.value));
-                        setSaved(false);
-                    }}
-                />
-                <span>-</span>
-                <input
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={20}
-                    value={away}
-                    onChange={(e) => {
-                        setAway(Number(e.target.value));
-                        setSaved(false);
-                    }}
-                />
-            </span>
-            <span>
-                <button type="button" onClick={onSave} disabled={saving}>
-                    {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
-                </button>
-            </span>
-            <time>{formatKickoff(kickoffUtc)}</time>
-            {error && (
-                <div className="error" style={{ gridColumn: '1 / -1' }}>
-                    {error}
-                </div>
-            )}
-        </div>
-    );
-}
-
 /**
- * Message to show when a save fails. A 403 means the server clock has passed the lock
- * point (the player's page is stale), so we steer them to refresh rather than surface the
- * raw server message; any other failure shows its message verbatim.
+ * Message to show when a save fails. A 403 means the server clock has passed the lock point
+ * (the player's page is stale), so we steer them to refresh rather than surface the raw server
+ * message; any other failure shows its message verbatim.
  */
 function saveErrorMessage(err: unknown, lockedHint: string): string {
     if (err instanceof ApiError && err.status === 403) return lockedHint;
 
     return err instanceof ApiError ? err.message : 'Failed to save';
-}
-
-function matchLabel(m: { phase: string; homeTeamId?: string; awayTeamId?: string }, tournament: GameContextValue['tournament']): string {
-    const teamName = (id?: string) => tournament.teams.find((t) => t.id === id)?.name ?? '?';
-    if (m.phase === 'GROUP' && 'homeTeamId' in m) {
-        return `${teamName(m.homeTeamId)} vs ${teamName(m.awayTeamId)}`;
-    }
-    return m.phase;
 }

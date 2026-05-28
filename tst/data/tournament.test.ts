@@ -1,9 +1,10 @@
 import { describe, test, expect } from 'vitest';
 import { TEAMS, MATCHES, FIRST_KICKOFF_UTC } from '@data/tournament';
-import type { GroupLetter, GroupMatch, KnockoutMatch } from '@shared/types';
+import { isGroupMatch } from '@shared/phases';
+import type { GroupLetter, KnockoutMatch } from '@shared/types';
 
 const ALL_GROUPS: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
-const KNOCKOUT_PHASES = ['R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'] as const;
+const KNOCKOUT_PHASES = ['R32', 'R16', 'QF', 'SF', 'THIRD', 'FINAL'] as const;
 
 describe('TEAMS', () => {
     test('has exactly 48 qualified teams', () => {
@@ -76,10 +77,23 @@ describe('MATCHES', () => {
 
     test('has 72 group matches', () => {
         // Arrange, Act
-        const groupMatches = MATCHES.filter((m): m is GroupMatch => m.phase === 'GROUP');
+        const groupMatches = MATCHES.filter(isGroupMatch);
 
         // Assert
         expect(groupMatches).toHaveLength(72);
+    });
+
+    test('splits group matches into three rounds of 24', () => {
+        // Arrange, Act
+        const byRound = new Map<string, number>();
+        for (const m of MATCHES.filter(isGroupMatch)) {
+            byRound.set(m.phase, (byRound.get(m.phase) ?? 0) + 1);
+        }
+
+        // Assert
+        expect(byRound.get('GROUP_R1')).toBe(24);
+        expect(byRound.get('GROUP_R2')).toBe(24);
+        expect(byRound.get('GROUP_R3')).toBe(24);
     });
 
     test('has 16 R32 matches', () => {
@@ -103,7 +117,7 @@ describe('MATCHES', () => {
     });
 
     test('has 1 third-place match', () => {
-        expect(MATCHES.filter((m) => m.phase === '3RD')).toHaveLength(1);
+        expect(MATCHES.filter((m) => m.phase === 'THIRD')).toHaveLength(1);
     });
 
     test('has 1 final', () => {
@@ -114,7 +128,7 @@ describe('MATCHES', () => {
         // Arrange, Act
         const counts = new Map<string, number>();
         for (const m of MATCHES) {
-            if (m.phase !== 'GROUP') continue;
+            if (!isGroupMatch(m)) continue;
             counts.set(m.homeTeamId, (counts.get(m.homeTeamId) ?? 0) + 1);
             counts.set(m.awayTeamId, (counts.get(m.awayTeamId) ?? 0) + 1);
         }
@@ -131,7 +145,7 @@ describe('MATCHES', () => {
 
         // Act, Assert
         for (const m of MATCHES) {
-            if (m.phase !== 'GROUP') continue;
+            if (!isGroupMatch(m)) continue;
             expect(teamGroup.get(m.homeTeamId), `${m.id} home`).toBe(m.group);
             expect(teamGroup.get(m.awayTeamId), `${m.id} away`).toBe(m.group);
         }

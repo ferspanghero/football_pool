@@ -7,23 +7,13 @@ import type {
     LeaderboardRow,
     Match,
     MatchId,
-    Phase,
+    PhaseId,
     Player,
     Prediction,
     Score,
     TeamId,
 } from '@shared/types';
-
-/** Phase-based point multiplier. Group=×1, with knockout rounds escalating to Final=×6. */
-export const PHASE_MULTIPLIER: Record<Phase, number> = {
-    GROUP: 1,
-    R32: 2,
-    R16: 3,
-    QF: 4,
-    SF: 5,
-    '3RD': 5,
-    FINAL: 6,
-};
+import { phaseById } from '@shared/phases';
 
 /** Flat bonus applied when a player's championTeamId matches the actual winner of the Final. */
 export const CHAMPION_BONUS = 20;
@@ -78,9 +68,9 @@ export function scoreMatch(prediction: Score, actual: Score): number {
     return POINTS.WRONG;
 }
 
-/** Phase-weighted score. Equivalent to `scoreMatch(...) * PHASE_MULTIPLIER[phase]`. */
-export function scoreMatchWeighted(prediction: Score, actual: Score, phase: Phase): number {
-    return scoreMatch(prediction, actual) * PHASE_MULTIPLIER[phase];
+/** Phase-weighted score. Equivalent to `scoreMatch(...) * phaseById(phase).multiplier`. */
+export function scoreMatchWeighted(prediction: Score, actual: Score, phase: PhaseId): number {
+    return scoreMatch(prediction, actual) * phaseById(phase).multiplier;
 }
 
 type MatchPhaseLookup = ReadonlyMap<MatchId, Pick<Match, 'id' | 'phase'>>;
@@ -124,7 +114,7 @@ export function computeLeaderboard(
             if (match === undefined) continue;
 
             const base = scoreMatch(pred.score, actual);
-            totalPoints += base * PHASE_MULTIPLIER[match.phase];
+            totalPoints += base * phaseById(match.phase).multiplier;
             if (base === POINTS.EXACT) exactScoreCount++;
 
             const predDiff = pred.score.home - pred.score.away;

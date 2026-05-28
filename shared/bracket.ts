@@ -7,13 +7,14 @@ import type {
     BracketSlot,
     GroupLetter,
     GroupMatch,
+    KnockoutMatch,
     Match,
     MatchId,
-    Phase,
     Score,
     Team,
     TeamId,
 } from '@shared/types';
+import { isGroupMatch, isKnockoutMatch, phaseOrder } from '@shared/phases';
 
 /**
  * Per-team standing within a group. Invariants:
@@ -157,8 +158,6 @@ export function bestThirds(
     return thirds.slice(0, 8);
 }
 
-const PHASE_ORDER: Phase[] = ['GROUP', 'R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'];
-
 type ResolvedMatch = { homeTeamId: TeamId; awayTeamId: TeamId };
 
 /**
@@ -178,8 +177,8 @@ export function resolveBracket(
     results: ReadonlyMap<MatchId, Score>,
 ): Map<MatchId, ResolvedMatch | undefined> {
     const out = new Map<MatchId, ResolvedMatch | undefined>();
-    const groupMatches = matches.filter((m): m is GroupMatch => m.phase === 'GROUP');
-    const knockoutMatches = matches.filter((m): m is Exclude<Match, GroupMatch> => m.phase !== 'GROUP');
+    const groupMatches = matches.filter(isGroupMatch);
+    const knockoutMatches: KnockoutMatch[] = matches.filter(isKnockoutMatch);
 
     // The greedy BEST_THIRD_OF assignment keys by matchId only; if a match had BEST_THIRD_OF
     // on both sides the second push would silently overwrite the first. FIFA's bracket never
@@ -272,7 +271,7 @@ export function resolveBracket(
     }
 
     const ordered = [...knockoutMatches].sort((a, b) => {
-        const phaseDiff = PHASE_ORDER.indexOf(a.phase) - PHASE_ORDER.indexOf(b.phase);
+        const phaseDiff = phaseOrder(a.phase) - phaseOrder(b.phase);
         if (phaseDiff !== 0) return phaseDiff;
         return a.id.localeCompare(b.id);
     });

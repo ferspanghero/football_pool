@@ -2,8 +2,18 @@
  * Shared domain types. Used by both the Worker API and the frontend.
  */
 
-/** Tournament phase. Each phase has its own scoring multiplier (see `shared/scoring.ts`). */
-export type Phase = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | '3RD' | 'FINAL';
+/**
+ * Tournament phase ids. Group rounds are first-class phases alongside the knockout stages.
+ * Per-phase metadata (label, scoring multiplier, ordering, group/knockout stage) lives on the
+ * `Phase` entity in `shared/phases.ts`, keyed by these ids.
+ */
+export type PhaseId = 'GROUP_R1' | 'GROUP_R2' | 'GROUP_R3' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL';
+
+/**
+ * Group vs knockout — the single source of this distinction, carried by the `Phase` entity.
+ * Group standings and knockout propagation are genuinely different algorithms (see bracket.ts).
+ */
+export type Stage = 'GROUP' | 'KNOCKOUT';
 
 /** Group letter A-L. FIFA 2026 has 12 groups of 4. */
 export type GroupLetter = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L';
@@ -36,7 +46,7 @@ export type BracketSlot =
 
 export type GroupMatch = {
     id: MatchId;
-    phase: 'GROUP';
+    phase: PhaseId;
     group: GroupLetter;
     /** ISO 8601 UTC timestamp. Predictions for this match lock at this time. */
     kickoffUtc: string;
@@ -46,7 +56,7 @@ export type GroupMatch = {
 
 export type KnockoutMatch = {
     id: MatchId;
-    phase: 'R32' | 'R16' | 'QF' | 'SF' | '3RD' | 'FINAL';
+    phase: PhaseId;
     /** ISO 8601 UTC timestamp. */
     kickoffUtc: string;
     homeSlot: BracketSlot;

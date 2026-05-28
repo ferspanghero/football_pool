@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, type MePayload, type TournamentData } from '../api-client';
+import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 
 export type GameContextValue = {
     me: MePayload;
@@ -35,6 +36,9 @@ export function GameLayout() {
         load();
     }, [gameId]);
 
+    const loading = !me || !tournament;
+    const showSkeleton = useDelayedFlag(loading, 300);
+
     const onLogout = async () => {
         await api.logout();
         navigate('/');
@@ -47,12 +51,8 @@ export function GameLayout() {
             </main>
         );
     }
-    if (!me || !tournament) {
-        return (
-            <main className="container">
-                <p>Loading…</p>
-            </main>
-        );
+    if (loading) {
+        return <main className="container">{showSkeleton ? <Skeleton lines={5} /> : null}</main>;
     }
     const base = `/game/${gameId}`;
 

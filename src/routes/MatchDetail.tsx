@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
 import { api, ApiError, type MatchPredictionsPayload } from '../api-client';
 import { formatKickoff } from '@shared/time';
+import { scoreMatch, POINTS } from '@shared/scoring';
 import type { GameContextValue } from './GameLayout';
+import type { Score } from '@shared/types';
 
 export function MatchDetail() {
     const ctx = useOutletContext<GameContextValue>();
@@ -46,6 +48,7 @@ export function MatchDetail() {
                     <tr>
                         <th>Player</th>
                         <th>Prediction</th>
+                        <th>Outcome</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,10 +58,37 @@ export function MatchDetail() {
                             <td>
                                 {p.score.home} - {p.score.away}
                             </td>
+                            <td>
+                                <OutcomeBadge prediction={p.score} result={data?.result ?? null} />
+                            </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
         </>
     );
+}
+
+/** Maps a per-match base-point value to a label + CSS class for the outcome badge. */
+function outcomeTier(points: number): { label: string; cls: string } {
+    switch (points) {
+        case POINTS.EXACT:
+            return { label: 'Exact', cls: 'outcome-exact' };
+        case POINTS.OUTCOME_AND_GD:
+            return { label: 'Outcome + GD', cls: 'outcome-good' };
+        case POINTS.OUTCOME_ONLY:
+            return { label: 'Outcome', cls: 'outcome-ok' };
+        case POINTS.GD_ONLY:
+            return { label: 'GD only', cls: 'outcome-gd' };
+        default:
+            return { label: 'Miss', cls: 'outcome-miss' };
+    }
+}
+
+/** A colored badge showing how a prediction scored against the actual result. */
+function OutcomeBadge({ prediction, result }: { prediction: Score; result: Score | null }) {
+    if (!result) return null;
+    const tier = outcomeTier(scoreMatch(prediction, result));
+
+    return <span className={`badge ${tier.cls}`}>{tier.label}</span>;
 }

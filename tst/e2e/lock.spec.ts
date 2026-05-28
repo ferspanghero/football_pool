@@ -41,22 +41,23 @@ test('E2 — a prediction save is rejected once kickoff passes, with a refresh h
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
     await enterGameUi(playerPage, gameName, GAME_PW, 'Alice');
 
-    // A save while the match is open succeeds
-    const matchRow = playerPage.locator('.match-row', { hasText: 'Mexico vs South Africa' });
-    await expect(matchRow).toBeVisible();
-    const inputs = matchRow.locator('input[type="number"]');
-    await inputs.nth(0).fill('2');
-    await inputs.nth(1).fill('1');
-    await matchRow.getByRole('button').click();
-    await expect(matchRow.getByRole('button')).toContainText('Saved');
+    // A save while the match is open succeeds (G_A_1 is in the default Round 1 phase)
+    const homeInput = playerPage.locator('input[data-match="G_A_1"]').nth(0);
+    const awayInput = playerPage.locator('input[data-match="G_A_1"]').nth(1);
+    const saveBtn = playerPage.locator('button[data-match="G_A_1"]');
+    await expect(homeInput).toBeVisible();
+    await homeInput.fill('2');
+    await awayInput.fill('1');
+    await saveBtn.click();
+    await expect(saveBtn).toContainText('Saved');
 
     // Act — kickoff passes; the player edits and re-saves on a now-stale page
     await setServerClock(adminPage, { mode: 'FIXED', iso: justAfter });
-    await inputs.nth(1).fill('2');
-    await matchRow.getByRole('button').click();
+    await awayInput.fill('2');
+    await saveBtn.click();
 
     // Assert — refresh guidance is shown, and the server rejects a direct retry too
-    await expect(matchRow.locator('.error')).toContainText(/refresh/i);
+    await expect(playerPage.locator('.pick-error')).toContainText(/refresh/i);
     const retry = await playerPage.request.put(`/api/me/predictions/${gA1.id}`, {
         data: { homeGoals: 3, awayGoals: 0 },
     });

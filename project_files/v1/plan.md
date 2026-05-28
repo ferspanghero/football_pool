@@ -40,6 +40,8 @@ football_pool/
 │   ├── main.tsx
 │   ├── app.tsx
 │   ├── api-client.ts     Typed API wrapper (ApiError on non-2xx)
+│   ├── components/       Reusable UI (Skeleton, Toast)
+│   ├── lib/              Display helpers (match labels)
 │   ├── routes/
 │   └── styles/app.css
 ├── api/                  Worker
@@ -53,6 +55,7 @@ football_pool/
 ├── shared/               Imported by both src/ and api/
 │   ├── scoring.ts
 │   ├── bracket.ts
+│   ├── phases.ts         Phase entities (order, multiplier, label, stage)
 │   ├── types.ts
 │   └── time.ts           Kickoff comparison helpers
 ├── data/
@@ -100,16 +103,17 @@ football_pool/
 ## Static Tournament Data (D)
 
 ### D1 — Type model in `shared/types.ts`
-- `Phase = 'GROUP' | 'R32' | 'R16' | 'QF' | 'SF' | '3RD' | 'FINAL'`.
+- `PhaseId = 'GROUP_R1' | 'GROUP_R2' | 'GROUP_R3' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL'` — group rounds are first-class phases.
+- `Stage = 'GROUP' | 'KNOCKOUT'` — the single source of the group/knockout distinction. Per-phase metadata (label, multiplier, stage, order) lives on the `Phase` entity in `shared/phases.ts`.
 - `TeamId`, `MatchId` as branded string types.
 - `Team = { id: TeamId; name: string; group: GroupLetter }`.
 - `BracketSlot` discriminated union (`GROUP_WINNER`, `GROUP_RUNNER_UP`, `BEST_THIRD` with rank 1–8, `KNOCKOUT_WINNER` with matchId).
-- `Match` discriminated union (`GROUP` with fixed teams, knockout phases with slots).
+- `Match` union — group matches carry fixed `homeTeamId`/`awayTeamId`; knockout matches carry `homeSlot`/`awaySlot`. Narrowed via the `isGroupMatch`/`isKnockoutMatch` guards.
 - `Score = { home: number; away: number }`.
 
 ### D2 — `data/tournament.ts`
 - Export `TEAMS: Team[]` — all 48 qualified teams.
-- Export `MATCHES: Match[]` — 72 group matches (12 groups × 6) + 32 knockout matches (R32) + 16 (R16) + 8 (QF) + 4 (SF) + 1 (3RD) + 1 (FINAL) = **104 matches**.
+- Export `MATCHES: Match[]` — 72 group matches (12 groups × 6) + 32 knockout matches (16 R32 + 8 R16 + 4 QF + 2 SF + 1 3rd-place + 1 final) = **104 matches**.
 - Each match has a stable string ID (`GROUP_A_1`, …, `R32_1`, …, `FINAL`) and a UTC kickoff timestamp (ISO 8601).
 - Initial kickoff times pulled from FIFA's published 2026 schedule; admin can patch the file and redeploy if FIFA reshuffles.
 - Export `FIRST_KICKOFF_UTC` derived as `min(MATCHES.map(m => m.kickoffUtc))`.
@@ -124,9 +128,9 @@ football_pool/
 ## Scoring Engine (S)
 
 ### S1 — `shared/scoring.ts`
-- Constants: `PHASE_MULTIPLIER` (Group=1, R32=2, R16=3, QF=4, SF=5, 3RD=5, Final=6), `CHAMPION_BONUS = 20`.
+- Phase multipliers live on the `Phase` entity (`shared/phases.ts`): group rounds ×1, R32 ×2, R16 ×3, QF ×4, SF ×5, 3rd-place ×5, Final ×6. `CHAMPION_BONUS = 20` is defined here in `scoring.ts`.
 - `scoreMatch(prediction, actual): number` — pure, returns 0/2/3/5/7 per the design.
-- `scoreMatchWeighted(prediction, actual, phase): number` — multiplies by phase factor.
+- `scoreMatchWeighted(prediction, actual, phase): number` — multiplies by `phaseById(phase).multiplier`.
 - `computeLeaderboard(players, predictions, results, matchesById, actualChampionTeamId)` — returns sorted `LeaderboardRow[]` with `totalPoints`, `exactScoreCount`, `correctOutcomeCount`.
 
 ### S2 — Scoring tests (TDD-first)
@@ -212,6 +216,7 @@ football_pool/
 - `GET /api/admin/whoami` — 200 if the `admin_session` is valid, else 401 (used by the admin UI to detect login state).
 - `POST /api/admin/games` — `{ name, password }` → creates a game.
 - `DELETE /api/admin/games/:id` — removes a game and its players + predictions (global `match_results` are kept).
+- `GET /api/admin/games/:id/players` — lists a game's players (for the admin Players tab).
 - `PUT /api/admin/results/:matchId` — `{ homeGoals, awayGoals }`. Persists to `match_results`.
 - `DELETE /api/admin/players/:id`.
 - Tests: each route's success + auth-failure + validation paths.
@@ -237,12 +242,12 @@ football_pool/
 
 ### F4 — Game home (`/game/:gameId`)
 - Header: tabs, current player, "Switch game" link.
-- "My picks" tab content: champion banner, upcoming matches (with score inputs), past matches with points.
-- Auto-save on score change after 500ms debounce; visible "Saved ✓" indicator per row.
+- "My picks" tab: pinned champion banner, then one phase at a time with ◀ ▶ navigation (defaults to the current phase via `currentPhaseIndex`). Matches are laid out in per-day cards; each row shows an open/locked badge, the group/slot label, both sides, score inputs, and a Save button.
+- Save per row (button + "Saved ✓" indicator). Matches whose kickoff has passed render read-only.
 
 ### F5 — Groups view (`/game/:gameId/groups`)
 - 12 group cards in a responsive grid (3×4 desktop, 1-col mobile).
-- Each card: group letter, 4 teams, live standings table (derived from results client-side via `bracket.ts`), 6 matches with inline prediction inputs.
+- Each card: group letter, its 4 teams, and the group's 6 matches (read-only overview; predictions are made on the My picks tab).
 
 ### F6 — Knockouts view (`/game/:gameId/knockouts`)
 - Vertical list grouped by phase. Each row: resolved teams or feeder description, kickoff time, open/locked badge, link to match detail.
@@ -261,11 +266,10 @@ football_pool/
 - Players: list per game with delete button.
 
 ### F10 — UI polish
-- Loading skeletons for >300ms loads.
-- Error toast component.
-- Color + icon for score outcomes (exact/outcome+GD/outcome/GD-only/wrong).
+- Loading skeletons for loads over ~300ms.
+- Toast component for transient success/error feedback (used by the admin actions).
+- Color-coded outcome badges on match detail (exact / outcome+GD / outcome / GD-only / miss).
 - Numeric `inputmode` on score inputs.
-- Network-offline banner via `online`/`offline` events.
 
 ## Deployment (X)
 
@@ -399,6 +403,14 @@ Conventions for all scenarios:
 | Preconditions | A game exists. |
 | Steps | 1. On `/admin`, submit a wrong admin password. 2. On `/`, select the game and submit a wrong game password. |
 | Expected | Step 1 → error shown, admin panel not rendered. Step 2 → error shown, no navigation to `/game/:id`. |
+
+**E6 — Admin manages players** (`admin-players.spec.ts`)
+
+| | |
+|---|---|
+| Preconditions | A game with two players (Alice + Bob). |
+| Steps | 1. Admin opens the Players tab and selects the game. 2. Admin clicks Delete on Bob. |
+| Expected | Both players are listed; after the delete, Bob is gone and Alice remains. |
 
 ## Verification
 
