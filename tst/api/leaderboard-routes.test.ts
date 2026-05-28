@@ -1,0 +1,130 @@
+import { describe, test, expect } from 'vitest';
+import { createTestDb } from './testdb';
+import { buildApp } from '@api/app';
+import { FixedClockProvider } from '@api/clock';
+import { gamesRepo } from '@api/repos/games';
+import { hashPassword } from '@api/crypto';
+import { resultsRepo } from '@api/repos/results';
+import { predictionsRepo } from '@api/repos/predictions';
+import { playersRepo } from '@api/repos/players';
+import { FIRST_KICKOFF_UTC, MATCHES } from '@data/tournament';
+import type { AppEnv } from '@api/types';
+
+const SECRET = 'test-secret-32-chars-12345678901234';
+const ORIGIN = 'https://pool.example';
+const firstMatch = MATCHES.find((m) => m.id === 'G_A_1')!;
+
+function env(db: D1Database): AppEnv['Bindings'] {
+    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored', DEPLOY_ORIGIN: ORIGIN };
+}
+
+/** App pinned to 5 minutes before first kickoff — every match is open. */
+function buildPreKickoffApp(): ReturnType<typeof buildApp> {
+    return buildApp(FixedClockProvider(new Date(Date.parse(FIRST_KICKOFF_UTC) - 5 * 60 * 1000).toISOString()));
+}
+
+/** App pinned to 1 ms after a specific match's kickoff. */
+function buildPostKickoffApp(matchKickoffUtc: string): ReturnType<typeof buildApp> {
+    return buildApp(FixedClockProvider(new Date(Date.parse(matchKickoffUtc) + 1).toISOString()));
+}
+
+describe('GET /api/games/:id/leaderboard', () => {
+    test('returns 404 for an unknown game', async () => {
+        // Arrange
+        const db = createTestDb();
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request('/api/games/999/leaderboard', {}, env(db));
+
+        // Assert
+        expect(res.status).toBe(404);
+    });
+
+    test('returns rows sorted by total points', async () => {
+        // Arrange
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: await hashPassword('pw') });
+        const alice = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        const bob = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Bob' });
+        await predictionsRepo.upsert(db, { playerId: alice.id, matchId: firstMatch.id, score: { home: 2, away: 1 } });
+        await predictionsRepo.upsert(db, { playerId: bob.id, matchId: firstMatch.id, score: { home: 4, away: 1 } });
+        await resultsRepo.upsert(db, { matchId: firstMatch.id, score: { home: 2, away: 1 } });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/leaderboard`, {}, env(db));
+        const body = (await res.json()) as { rows: Array<{ displayName: string; totalPoints: number }> };
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect(body.rows.map((r) => r.displayName)).toEqual(['Alice', 'Bob']);
+        expect(body.rows[0]!.totalPoints).toBe(7);
+        expect(body.rows[1]!.totalPoints).toBe(3);
+    });
+
+    test('returns empty rows when no players exist', async () => {
+        // Arrange
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/leaderboard`, {}, env(db));
+        const body = (await res.json()) as { rows: unknown[] };
+
+        // Assert
+        expect(body.rows).toEqual([]);
+    });
+});
+
+describe('GET /api/games/:id/predictions/:matchId', () => {
+    test('returns 403 before the match kickoff', async () => {
+        // Arrange
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/predictions/${firstMatch.id}`, {}, env(db));
+
+        // Assert
+        expect(res.status).toBe(403);
+    });
+
+    test('returns all players predictions and the actual result after kickoff', async () => {
+        // Arrange
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const alice = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        await predictionsRepo.upsert(db, { playerId: alice.id, matchId: firstMatch.id, score: { home: 2, away: 1 } });
+        await resultsRepo.upsert(db, { matchId: firstMatch.id, score: { home: 2, away: 1 } });
+        const app = buildPostKickoffApp(firstMatch.kickoffUtc);
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/predictions/${firstMatch.id}`, {}, env(db));
+        const body = (await res.json()) as {
+            predictions: Array<{ displayName: string; score: { home: number; away: number } }>;
+            result: { home: number; away: number } | null;
+        };
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect(body.predictions).toHaveLength(1);
+        expect(body.predictions[0]!.displayName).toBe('Alice');
+        expect(body.result).toEqual({ home: 2, away: 1 });
+    });
+
+    test('returns 404 for an unknown match', async () => {
+        // Arrange
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/predictions/UNKNOWN`, {}, env(db));
+
+        // Assert
+        expect(res.status).toBe(404);
+    });
+});

@@ -1,0 +1,17 @@
+# Local development secrets. Copy to `.dev.vars` (gitignored) and fill in.
+# Production values are set via `wrangler secret put NAME` and never live in source.
+
+# 32+ random bytes (base64). Generate: `openssl rand -base64 48`.
+SESSION_SECRET="replace-me-with-a-32-byte-random-secret"
+
+# scrypt/PBKDF2 hash of the admin password. Generate with:
+#   echo -n "your-admin-pw" | npx tsx scripts/hash-admin-password.ts
+ADMIN_PASSWORD_HASH="replace-with-hash-output"
+
+# The deploy origin (https://...). Used by `requireOrigin` middleware as a CSRF guard.
+# For local dev, this is what Vite serves (default http://localhost:5173).
+DEPLOY_ORIGIN="http://localhost:5173"
+
+# Deployment stage. "TEST" enables the clock-control endpoint that the E2E suite drives
+# (POST /api/admin/test/clock). Leave it as "TEST" for local dev; NEVER set it in production.
+DEPLOYMENT_STAGE="TEST"

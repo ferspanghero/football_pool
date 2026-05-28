@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Cloudflare Workers local state (includes the local D1 database)
+.wrangler
+
+# Secrets — never commit (.dev.vars.example is the committed template)
+.dev.vars
+.env
+.env.local
+
+# Test artifacts
+coverage
+test-results
+playwright-report
+.playwright
+
+# Misc
+*.log
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
