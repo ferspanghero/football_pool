@@ -2,24 +2,25 @@
 
 ## Goal
 
-Web app for ≤20 friends to predict FIFA 2026 World Cup match scores across multiple independent friend groups ("games"), with leaderboards updated as the admin enters real results. Single-deploy stack on Cloudflare's free tier (Pages + Workers + D1). Desktop-first browser UI with mobile fallback.
+Web app for ≤20 friends to predict FIFA 2026 World Cup match scores across multiple independent friend groups ("games"), with leaderboards updated as the admin enters real results. Single-Worker stack on Cloudflare's free tier: one Worker serves both the SPA (as static assets) and the API, backed by D1. Desktop-first browser UI with mobile fallback.
 
 ## Architecture
 
 ```
-┌───────────────────────┐   /api/*    ┌─────────────────────────────┐
-│  Cloudflare Pages     │────────────►│  Cloudflare Worker (Hono)   │
-│  Vite + React + TS    │   fetch     │  Auth, scoring, admin       │
-└───────────────────────┘             └──────────────┬──────────────┘
-                                                     │ D1 binding
-                                                     ▼
-                                              ┌──────────────┐
-                                              │   D1 SQLite  │
-                                              └──────────────┘
+            ┌────────────────────────────────────────────┐
+  request → │             Cloudflare Worker              │
+            │                                            │
+            │  /api/*  → Hono (auth, scoring, admin) ────┼──► D1 SQLite
+            │  else    → static asset (SPA: Vite +       │    (D1 binding)
+            │            React + TS, served from dist/)   │
+            └────────────────────────────────────────────┘
 
-  /data/tournament.ts ─── imported by both client and Worker via /shared
+  `run_worker_first = ["/api/*"]` routes API calls to the Worker; every other path serves a
+  built static file, falling back to index.html for client-side routes. One origin, one deploy.
+  /data/tournament.ts is imported by both the client bundle and the Worker via /shared.
 ```
 
+- One deployable: the built SPA (`dist/`) ships as the Worker's static assets, so the client's relative `/api/*` calls are same-origin — no CORS, no cross-origin routing.
 - Stateless Worker. HMAC-signed cookies hold session, no session store.
 - Static tournament data (teams, groups, fixtures) lives in TypeScript; D1 holds only mutable state.
 - Scoring is a pure module reused by client (for preview hints) and Worker (for the leaderboard).
@@ -78,7 +79,7 @@ football_pool/
 ## Bootstrap (B)
 
 ### B1 — package.json + toolchain
-- Init `package.json` with scripts: `dev`, `dev:worker`, `build`, `test`, `test:coverage`, `test:e2e`, `lint`, `typecheck`, `check`, `deploy`, `deploy:pages`, `release`.
+- Init `package.json` with scripts: `dev`, `dev:worker` (a `predev:worker` guard builds `dist/` if missing, since the Worker serves it as static assets), `build`, `test`, `test:coverage`, `test:e2e`, `lint`, `typecheck`, `check`, `deploy`, `release`.
 - Dependencies: `react`, `react-dom`, `react-router-dom`, `hono`.
 - Dev deps: `vite`, `@vitejs/plugin-react`, `typescript`, `@types/react`, `@types/react-dom`, `vitest`, `@vitest/coverage-v8`, `@playwright/test`, `wrangler`, `better-sqlite3` (for test fixtures), `eslint`, `typescript-eslint`, `prettier`.
 - Single root `tsconfig.json` (strict, ES2022, DOM + `@cloudflare/workers-types`), with path aliases `@/`, `@shared/`, `@data/`, `@api/`.
@@ -223,9 +224,9 @@ football_pool/
 - `GET /api/admin/test/clock` — reports the active mode/iso so the admin UI reflects it on reload.
 - Both are gated by `requireAdmin` **and** `DEPLOYMENT_STAGE === 'TEST'`, so they are permanently 403 in production.
 
-### A10 — Error envelope + rate limiting
+### A10 — Error envelope
 - All errors returned as `{ error: { code, message } }` with codes UNAUTHENTICATED / FORBIDDEN / NOT_FOUND / VALIDATION / RATE_LIMITED / INTERNAL.
-- Cloudflare rate-limit rules attached to the enter + admin-login routes at deploy time.
+- `RATE_LIMITED` is reserved for rate limiting, which is tracked as a backlog item (`tasks.md` BL6 — the Workers Rate Limiting binding on the auth endpoints), not part of v1.
 
 ## Display Time (T)
 
@@ -276,12 +277,11 @@ football_pool/
 - `scripts/hash-admin-password.ts` reads a password on stdin and prints the `salt:hash` string for `ADMIN_PASSWORD_HASH`.
 
 ### X2 — Cloudflare setup
-- `wrangler d1 create football-pool` (one-time); `wrangler d1 migrations apply football-pool --remote` per migration.
-- `wrangler secret put` for `SESSION_SECRET` and `ADMIN_PASSWORD_HASH`.
-- Cloudflare Pages project linked; build `npm run build`, output `dist/`; `/api/*` routed to the Worker.
+- `scripts/deploy.sh` is the single entry point. It is idempotent (detects what is already set up) and runs end-to-end: `wrangler login` (interactive, first time only), `wrangler d1 create football-pool` (writing the returned id into `wrangler.toml`), `wrangler d1 migrations apply --remote`, `wrangler secret put` for `SESSION_SECRET` (auto-generated) and `ADMIN_PASSWORD_HASH` (prompted), then `npm run release`.
+- The Worker ships the built SPA as static assets (`[assets]` in `wrangler.toml`, `directory = "./dist"`); `run_worker_first = ["/api/*"]` sends API calls to the Worker and serves a static file for everything else. No separate Pages project.
 
 ### X3 — Deploy verification
-- `npm run release` runs the full `check` (typecheck + lint + coverage + build) then deploys the Worker and Pages.
+- `npm run release` runs the full `check` (typecheck + lint + coverage + build) then `wrangler deploy` (uploading the Worker and its static assets in one step).
 - Smoke: `GET /api/tournament` returns 104 matches; admin login → create a game → enter a result → read the leaderboard.
 
 ## Test Scenarios

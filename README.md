@@ -34,7 +34,7 @@ Base points are multiplied by a phase factor (group stage ×1, escalating to the
 | Frontend | Vite + React + TypeScript (static SPA) |
 | Backend | Cloudflare Worker (Hono), REST API under `/api` |
 | Database | Cloudflare D1 (SQLite) |
-| Hosting | Cloudflare Pages + Workers (free tier) |
+| Hosting | A single Cloudflare Worker serves the SPA (as static assets) and the API (free tier) |
 
 Static tournament data (teams and all fixtures) lives in `data/`; only mutable state lives in D1. Knockout fixtures start with placeholder team labels that an admin replaces with the actual teams (by editing `data/tournament.ts`) once each round's pairings are known — there is no automatic standings/bracket resolution. Time-dependent behavior reads a clock provider (`api/clock.ts`) so it can be controlled deterministically in tests.
 
@@ -109,7 +109,15 @@ End-to-end test scenarios (preconditions, steps, expected outcomes) are document
 
 ## Deployment
 
-See [`DEPLOY.md`](DEPLOY.md) for one-time Cloudflare setup and the per-deploy steps.
+Deploy with one command:
+
+```bash
+./scripts/deploy.sh
+```
+
+It's idempotent and handles both the first deploy and every later one — `wrangler login` (interactive, first time only), creating the D1 database, applying migrations, setting secrets (`SESSION_SECRET`, `ADMIN_PASSWORD_HASH`), and deploying the single Worker (SPA static assets + API). Re-running is always safe; the script header documents each step. For a quick redeploy without the full check gate, `npm run deploy`.
+
+> The local-only `DEPLOYMENT_STAGE=TEST` flag (see `.dev.vars.example`) enables the test-clock endpoint and must never be set in production — the deploy script does not set it.
 
 ## License
 

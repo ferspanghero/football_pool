@@ -16,7 +16,7 @@ export default defineConfig({
     },
     webServer: [
         {
-            command: 'npx wrangler dev',
+            command: 'npm run dev:worker',
             url: 'http://localhost:8787/api/tournament',
             reuseExistingServer: true,
             timeout: 60_000,

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "predev:worker": "test -d dist || npm run build",
     "dev:worker": "wrangler dev",
     "build": "vite build",
     "test": "vitest run",
@@ -17,9 +18,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm run test:coverage && npm run build",
-    "deploy": "wrangler deploy",
-    "deploy:pages": "wrangler pages deploy dist --project-name football-pool",
-    "release": "npm run check && npm run deploy && npm run deploy:pages"
+    "deploy": "npm run build && wrangler deploy",
+    "release": "npm run check && wrangler deploy"
   },
   "dependencies": {
     "hono": "^4.6.0",
