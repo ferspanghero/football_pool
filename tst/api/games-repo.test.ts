@@ -87,7 +87,7 @@ describe('gamesRepo', () => {
     test('delete removes the game and wipes its players + predictions, leaving global results', async () => {
         // Arrange — a game with a player who has a prediction, plus a global match result
         const game = await gamesRepo.create(db, { name: 'Doomed', passwordHash: 'h' });
-        const player = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        const player = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
         await predictionsRepo.upsert(db, { playerId: player.id, matchId: 'G_A_1', score: { home: 2, away: 1 } });
         await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 2, away: 1 } });
 

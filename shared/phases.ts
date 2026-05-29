@@ -5,7 +5,7 @@
  * this array.
  */
 
-import type { GroupMatch, KnockoutMatch, Match, PhaseId, Stage } from '@shared/types';
+import type { Match, PhaseId, Stage, Team } from '@shared/types';
 
 /** A tournament phase and everything that is specific to it. */
 export type Phase = {
@@ -45,14 +45,26 @@ export function phaseOrder(id: PhaseId): number {
     return PHASES.findIndex((p) => p.id === id);
 }
 
-/** Type guard: a group-stage match (carries concrete `homeTeamId`/`awayTeamId`). */
-export function isGroupMatch(match: Match): match is GroupMatch {
+/** Whether a match belongs to the group stage (vs a knockout round), per its phase. */
+export function isGroupMatch(match: Match): boolean {
     return phaseById(match.phase).stage === 'GROUP';
 }
 
-/** Type guard: a knockout match (carries `homeSlot`/`awaySlot` resolved from results). */
-export function isKnockoutMatch(match: Match): match is KnockoutMatch {
+/** Whether a match belongs to a knockout round (vs the group stage), per its phase. */
+export function isKnockoutMatch(match: Match): boolean {
     return !isGroupMatch(match);
+}
+
+/**
+ * Whether both of a match's sides reference real teams (vs unresolved knockout placeholder
+ * labels like "Winner of Group A"). Group matches are always resolved; a knockout becomes
+ * resolved once the actual team ids are filled in. Predictions are accepted only for resolved
+ * matches — see the lock in the predictions route and the My-picks UI.
+ */
+export function hasResolvedTeams(match: Match, teams: ReadonlyArray<Team>): boolean {
+    const ids = new Set(teams.map((t) => t.id));
+
+    return ids.has(match.homeTeamId) && ids.has(match.awayTeamId);
 }
 
 /** A phase paired with its matches (kickoff-ascending). */

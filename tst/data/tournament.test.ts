@@ -1,10 +1,9 @@
 import { describe, test, expect } from 'vitest';
 import { TEAMS, MATCHES, FIRST_KICKOFF_UTC } from '@data/tournament';
 import { isGroupMatch } from '@shared/phases';
-import type { GroupLetter, KnockoutMatch } from '@shared/types';
+import type { GroupLetter } from '@shared/types';
 
 const ALL_GROUPS: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
-const KNOCKOUT_PHASES = ['R32', 'R16', 'QF', 'SF', 'THIRD', 'FINAL'] as const;
 
 describe('TEAMS', () => {
     test('has exactly 48 qualified teams', () => {
@@ -159,26 +158,29 @@ describe('MATCHES', () => {
         }
     });
 
-    test('knockout matches reference valid bracket slots', () => {
-        // Arrange
+    test('every knockout match has two distinct, non-empty team labels', () => {
+        // Arrange, Act
+        const knockoutMatches = MATCHES.filter((m) => !isGroupMatch(m));
+
+        // Assert
+        expect(knockoutMatches).toHaveLength(32);
+        for (const m of knockoutMatches) {
+            expect(m.homeTeamId.length, `${m.id} home`).toBeGreaterThan(0);
+            expect(m.awayTeamId.length, `${m.id} away`).toBeGreaterThan(0);
+            expect(m.homeTeamId, `${m.id} sides`).not.toBe(m.awayTeamId);
+        }
+    });
+
+    test('knockout feeder placeholders reference an existing match', () => {
+        // Arrange — "Winner of M74" / "Loser of M101" placeholders must point at a real fixture
         const matchIds = new Set(MATCHES.map((m) => m.id));
-        const knockoutMatches = MATCHES.filter((m): m is KnockoutMatch =>
-            (KNOCKOUT_PHASES as readonly string[]).includes(m.phase),
-        );
+        const feeder = /^(?:Winner|Loser) of (M\d+)$/;
 
         // Act, Assert
-        for (const m of knockoutMatches) {
-            for (const slot of [m.homeSlot, m.awaySlot]) {
-                if (slot.kind === 'GROUP_WINNER' || slot.kind === 'GROUP_RUNNER_UP') {
-                    expect(ALL_GROUPS, `${m.id} ${slot.kind}`).toContain(slot.group);
-                } else if (slot.kind === 'BEST_THIRD_OF') {
-                    expect(slot.eligibleGroups.length, `${m.id} BEST_THIRD_OF`).toBeGreaterThan(0);
-                    for (const g of slot.eligibleGroups) {
-                        expect(ALL_GROUPS, `${m.id} BEST_THIRD_OF`).toContain(g);
-                    }
-                } else {
-                    expect(matchIds, `${m.id} feeder`).toContain(slot.matchId);
-                }
+        for (const m of MATCHES.filter((m) => !isGroupMatch(m))) {
+            for (const label of [m.homeTeamId, m.awayTeamId]) {
+                const ref = feeder.exec(label);
+                if (ref) expect(matchIds, `${m.id} → ${label}`).toContain(ref[1]);
             }
         }
     });

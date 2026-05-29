@@ -32,10 +32,10 @@ test('E6 — admin lists a game\'s players and deletes one', async ({ browser })
 
     // Two players join via the API.
     expect(
-        (await alicePage.request.post(`/api/games/${gameId}/enter`, { data: { password: GAME_PW, displayName: 'Alice' } })).ok(),
+        (await alicePage.request.post(`/api/games/${gameId}/enter`, { data: { displayName: 'Alice', playerPassword: 'player-pw', gamePassword: GAME_PW } })).ok(),
     ).toBeTruthy();
     expect(
-        (await bobPage.request.post(`/api/games/${gameId}/enter`, { data: { password: GAME_PW, displayName: 'Bob' } })).ok(),
+        (await bobPage.request.post(`/api/games/${gameId}/enter`, { data: { displayName: 'Bob', playerPassword: 'player-pw', gamePassword: GAME_PW } })).ok(),
     ).toBeTruthy();
 
     // Admin already holds a session (it created the game); open the panel and go to Players.

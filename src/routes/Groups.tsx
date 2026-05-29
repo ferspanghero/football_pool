@@ -5,7 +5,7 @@ import { isGroupMatch } from '@shared/phases';
 import { flagEmoji } from '@data/flags';
 import { Flag } from '../components/Flag';
 import type { GameContextValue } from './GameLayout';
-import type { GroupLetter, GroupMatch, Team } from '@shared/types';
+import type { GroupLetter, Match, Team } from '@shared/types';
 
 const ALL_GROUPS: GroupLetter[] = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
 
@@ -17,8 +17,8 @@ export function Groups() {
         list.push(t);
         teamsByGroup.set(t.group, list);
     }
-    const matchesByGroup = ctx.tournament.matches.reduce<Record<string, GroupMatch[]>>((acc, m) => {
-        if (!isGroupMatch(m)) return acc;
+    const matchesByGroup = ctx.tournament.matches.reduce<Record<string, Match[]>>((acc, m) => {
+        if (!isGroupMatch(m) || !m.group) return acc;
         const list = acc[m.group] ?? [];
         list.push(m);
         acc[m.group] = list;
@@ -50,13 +50,9 @@ export function Groups() {
                             <ul>
                                 {matches.map((m) => (
                                     <li key={m.id}>
-                                        {'homeTeamId' in m && (
-                                            <>
-                                                <Flag emoji={flagEmoji(m.homeTeamId)} />
-                                                {teamName(m.homeTeamId)} vs <Flag emoji={flagEmoji(m.awayTeamId)} />
-                                                {teamName(m.awayTeamId)} — {new Date(m.kickoffUtc).toLocaleDateString()}
-                                            </>
-                                        )}
+                                        <Flag emoji={flagEmoji(m.homeTeamId)} />
+                                        {teamName(m.homeTeamId)} vs <Flag emoji={flagEmoji(m.awayTeamId)} />
+                                        {teamName(m.awayTeamId)} — {new Date(m.kickoffUtc).toLocaleDateString()}
                                     </li>
                                 ))}
                             </ul>

@@ -1,13 +1,16 @@
 /**
- * Static FIFA 2026 tournament data: 48 teams in 12 groups, all 104 fixtures (72 group +
- * 32 knockout), and the bracket template that resolves at runtime once results come in.
+ * Static FIFA 2026 tournament data: 48 teams in 12 groups and all 104 fixtures (72 group +
+ * 32 knockout).
  *
  * Kickoff times converted from Sky Sports' UK BST listing to UTC by subtracting one hour.
- * Bracket template (BEST_THIRD_OF eligibility per R32 slot) matches FIFA's published
- * mapping for the 48-team format.
+ *
+ * Knockout fixtures start with placeholder team labels (e.g. `"Winner of Group A"`) that
+ * describe the bracket structure. There is no automatic standings/tiebreaker resolution:
+ * once a round's pairings are known, replace the placeholders with the actual team ids here
+ * and redeploy. A knockout match only becomes predictable once both ids are real teams.
  */
 
-import type { GroupMatch, Match, PhaseId, Team } from '@shared/types';
+import type { Match, PhaseId, Team } from '@shared/types';
 
 /** Group matches play 2 fixtures per round (ids `_1`..`_6`), so round = ceil(suffix / 2). */
 function groupRoundPhase(id: string): PhaseId {
@@ -166,110 +169,81 @@ const rawGroupMatches = [
 ] as const;
 
 /** Group matches with their round-derived phase assigned at construction. */
-const groupMatches: GroupMatch[] = rawGroupMatches.map((m) => ({ ...m, phase: groupRoundPhase(m.id) }));
+const groupMatches: Match[] = rawGroupMatches.map((m) => ({ ...m, phase: groupRoundPhase(m.id) }));
 
+// Knockout fixtures. `homeTeamId`/`awayTeamId` are placeholder labels describing the bracket
+// (Winner/Runner-up of a group, a best-3rd pool, or the Winner/Loser of an earlier match).
+// Replace each with the actual team id once that round's pairing is known, then redeploy.
 const knockoutMatches: Match[] = [
     { id: 'M73', phase: 'R32', kickoffUtc: '2026-06-28T19:00:00Z',
-        homeSlot: { kind: 'GROUP_RUNNER_UP', group: 'A' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'B' } },
+        homeTeamId: 'Runner-up of Group A', awayTeamId: 'Runner-up of Group B' },
     { id: 'M74', phase: 'R32', kickoffUtc: '2026-06-29T20:30:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'E' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['A', 'B', 'C', 'D', 'F'] } },
+        homeTeamId: 'Winner of Group E', awayTeamId: 'Best 3rd from A/B/C/D/F' },
     { id: 'M75', phase: 'R32', kickoffUtc: '2026-06-30T01:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'F' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'C' } },
+        homeTeamId: 'Winner of Group F', awayTeamId: 'Runner-up of Group C' },
     { id: 'M76', phase: 'R32', kickoffUtc: '2026-06-29T17:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'C' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'F' } },
+        homeTeamId: 'Winner of Group C', awayTeamId: 'Runner-up of Group F' },
     { id: 'M77', phase: 'R32', kickoffUtc: '2026-06-30T21:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'I' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['C', 'D', 'F', 'G', 'H'] } },
+        homeTeamId: 'Winner of Group I', awayTeamId: 'Best 3rd from C/D/F/G/H' },
     { id: 'M78', phase: 'R32', kickoffUtc: '2026-06-30T17:00:00Z',
-        homeSlot: { kind: 'GROUP_RUNNER_UP', group: 'E' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'I' } },
+        homeTeamId: 'Runner-up of Group E', awayTeamId: 'Runner-up of Group I' },
     { id: 'M79', phase: 'R32', kickoffUtc: '2026-07-01T01:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'A' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['C', 'E', 'F', 'H', 'I'] } },
+        homeTeamId: 'Winner of Group A', awayTeamId: 'Best 3rd from C/E/F/H/I' },
     { id: 'M80', phase: 'R32', kickoffUtc: '2026-07-01T16:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'L' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['E', 'H', 'I', 'J', 'K'] } },
+        homeTeamId: 'Winner of Group L', awayTeamId: 'Best 3rd from E/H/I/J/K' },
     { id: 'M81', phase: 'R32', kickoffUtc: '2026-07-02T00:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'D' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['B', 'E', 'F', 'I', 'J'] } },
+        homeTeamId: 'Winner of Group D', awayTeamId: 'Best 3rd from B/E/F/I/J' },
     { id: 'M82', phase: 'R32', kickoffUtc: '2026-07-01T20:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'G' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['A', 'E', 'H', 'I', 'J'] } },
+        homeTeamId: 'Winner of Group G', awayTeamId: 'Best 3rd from A/E/H/I/J' },
     { id: 'M83', phase: 'R32', kickoffUtc: '2026-07-02T23:00:00Z',
-        homeSlot: { kind: 'GROUP_RUNNER_UP', group: 'K' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'L' } },
+        homeTeamId: 'Runner-up of Group K', awayTeamId: 'Runner-up of Group L' },
     { id: 'M84', phase: 'R32', kickoffUtc: '2026-07-02T19:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'H' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'J' } },
+        homeTeamId: 'Winner of Group H', awayTeamId: 'Runner-up of Group J' },
     { id: 'M85', phase: 'R32', kickoffUtc: '2026-07-03T03:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'B' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['E', 'F', 'G', 'I', 'J'] } },
+        homeTeamId: 'Winner of Group B', awayTeamId: 'Best 3rd from E/F/G/I/J' },
     { id: 'M86', phase: 'R32', kickoffUtc: '2026-07-03T22:00:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'J' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'H' } },
+        homeTeamId: 'Winner of Group J', awayTeamId: 'Runner-up of Group H' },
     { id: 'M87', phase: 'R32', kickoffUtc: '2026-07-04T01:30:00Z',
-        homeSlot: { kind: 'GROUP_WINNER', group: 'K' },
-        awaySlot: { kind: 'BEST_THIRD_OF', eligibleGroups: ['D', 'E', 'I', 'J', 'L'] } },
+        homeTeamId: 'Winner of Group K', awayTeamId: 'Best 3rd from D/E/I/J/L' },
     { id: 'M88', phase: 'R32', kickoffUtc: '2026-07-03T18:00:00Z',
-        homeSlot: { kind: 'GROUP_RUNNER_UP', group: 'D' },
-        awaySlot: { kind: 'GROUP_RUNNER_UP', group: 'G' } },
+        homeTeamId: 'Runner-up of Group D', awayTeamId: 'Runner-up of Group G' },
 
     { id: 'M89', phase: 'R16', kickoffUtc: '2026-07-04T21:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M74' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M77' } },
+        homeTeamId: 'Winner of M74', awayTeamId: 'Winner of M77' },
     { id: 'M90', phase: 'R16', kickoffUtc: '2026-07-04T17:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M73' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M75' } },
+        homeTeamId: 'Winner of M73', awayTeamId: 'Winner of M75' },
     { id: 'M91', phase: 'R16', kickoffUtc: '2026-07-05T20:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M76' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M78' } },
+        homeTeamId: 'Winner of M76', awayTeamId: 'Winner of M78' },
     { id: 'M92', phase: 'R16', kickoffUtc: '2026-07-06T00:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M79' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M80' } },
+        homeTeamId: 'Winner of M79', awayTeamId: 'Winner of M80' },
     { id: 'M93', phase: 'R16', kickoffUtc: '2026-07-06T19:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M83' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M84' } },
+        homeTeamId: 'Winner of M83', awayTeamId: 'Winner of M84' },
     { id: 'M94', phase: 'R16', kickoffUtc: '2026-07-07T00:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M81' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M82' } },
+        homeTeamId: 'Winner of M81', awayTeamId: 'Winner of M82' },
     { id: 'M95', phase: 'R16', kickoffUtc: '2026-07-07T16:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M86' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M88' } },
+        homeTeamId: 'Winner of M86', awayTeamId: 'Winner of M88' },
     { id: 'M96', phase: 'R16', kickoffUtc: '2026-07-07T20:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M85' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M87' } },
+        homeTeamId: 'Winner of M85', awayTeamId: 'Winner of M87' },
 
     { id: 'M97', phase: 'QF', kickoffUtc: '2026-07-09T20:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M89' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M90' } },
+        homeTeamId: 'Winner of M89', awayTeamId: 'Winner of M90' },
     { id: 'M98', phase: 'QF', kickoffUtc: '2026-07-10T19:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M93' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M94' } },
+        homeTeamId: 'Winner of M93', awayTeamId: 'Winner of M94' },
     { id: 'M99', phase: 'QF', kickoffUtc: '2026-07-11T21:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M91' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M92' } },
+        homeTeamId: 'Winner of M91', awayTeamId: 'Winner of M92' },
     { id: 'M100', phase: 'QF', kickoffUtc: '2026-07-12T01:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M95' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M96' } },
+        homeTeamId: 'Winner of M95', awayTeamId: 'Winner of M96' },
 
     { id: 'M101', phase: 'SF', kickoffUtc: '2026-07-14T19:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M97' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M98' } },
+        homeTeamId: 'Winner of M97', awayTeamId: 'Winner of M98' },
     { id: 'M102', phase: 'SF', kickoffUtc: '2026-07-15T19:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M99' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M100' } },
+        homeTeamId: 'Winner of M99', awayTeamId: 'Winner of M100' },
 
     { id: 'M103', phase: 'THIRD', kickoffUtc: '2026-07-18T21:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_LOSER', matchId: 'M101' },
-        awaySlot: { kind: 'KNOCKOUT_LOSER', matchId: 'M102' } },
+        homeTeamId: 'Loser of M101', awayTeamId: 'Loser of M102' },
 
     { id: 'M104', phase: 'FINAL', kickoffUtc: '2026-07-19T19:00:00Z',
-        homeSlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M101' },
-        awaySlot: { kind: 'KNOCKOUT_WINNER', matchId: 'M102' } },
+        homeTeamId: 'Winner of M101', awayTeamId: 'Winner of M102' },
 ];
 
 /** All 104 fixtures: 72 group matches followed by 32 knockout matches in phase order. */

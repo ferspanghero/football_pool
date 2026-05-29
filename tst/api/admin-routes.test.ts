@@ -75,6 +75,38 @@ describe('GET /api/admin/whoami', () => {
     });
 });
 
+describe('GET /api/admin/results', () => {
+    test('returns recorded results for an authenticated admin', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+        await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 2, away: 1 } });
+
+        // Act
+        const res = await app.request('/api/admin/results', { headers: { Cookie: cookie } }, env);
+        const body = (await res.json()) as { results: Array<{ matchId: string; home: number; away: number }> };
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1 });
+    });
+
+    test('returns 401 without admin session', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request('/api/admin/results', {}, env);
+
+        // Assert
+        expect(res.status).toBe(401);
+    });
+});
+
 describe('POST /api/admin/login', () => {
     test('sets admin_session cookie on correct password', async () => {
         // Arrange
@@ -268,7 +300,7 @@ describe('DELETE /api/admin/players/:id', () => {
         const db = createTestDb();
         const env = await adminEnv(db);
         const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
-        const alice = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        const alice = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
         const app = buildPreKickoffApp();
         const cookie = await loginAdmin(app, env);
 
@@ -291,7 +323,7 @@ describe('DELETE /api/admin/games/:id', () => {
         const db = createTestDb();
         const env = await adminEnv(db);
         const game = await gamesRepo.create(db, { name: 'Doomed', passwordHash: 'h' });
-        await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
         const app = buildPreKickoffApp();
         const cookie = await loginAdmin(app, env);
 
@@ -347,8 +379,8 @@ describe('GET /api/admin/games/:id/players', () => {
         const db = createTestDb();
         const env = await adminEnv(db);
         const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
-        await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
-        await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Bob' });
+        await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
+        await playersRepo.create(db, { gameId: game.id, displayName: 'Bob', passwordHash: 'h' });
         const app = buildPreKickoffApp();
         const cookie = await loginAdmin(app, env);
 

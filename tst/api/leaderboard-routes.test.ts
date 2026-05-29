@@ -45,8 +45,8 @@ describe('GET /api/games/:id/leaderboard', () => {
         // Arrange
         const db = createTestDb();
         const game = await gamesRepo.create(db, { name: 'G', passwordHash: await hashPassword('pw') });
-        const alice = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
-        const bob = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Bob' });
+        const alice = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
+        const bob = await playersRepo.create(db, { gameId: game.id, displayName: 'Bob', passwordHash: 'h' });
         await predictionsRepo.upsert(db, { playerId: alice.id, matchId: firstMatch.id, score: { home: 2, away: 1 } });
         await predictionsRepo.upsert(db, { playerId: bob.id, matchId: firstMatch.id, score: { home: 4, away: 1 } });
         await resultsRepo.upsert(db, { matchId: firstMatch.id, score: { home: 2, away: 1 } });
@@ -96,7 +96,7 @@ describe('GET /api/games/:id/predictions/:matchId', () => {
         // Arrange
         const db = createTestDb();
         const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
-        const alice = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        const alice = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
         await predictionsRepo.upsert(db, { playerId: alice.id, matchId: firstMatch.id, score: { home: 2, away: 1 } });
         await resultsRepo.upsert(db, { matchId: firstMatch.id, score: { home: 2, away: 1 } });
         const app = buildPostKickoffApp(firstMatch.kickoffUtc);

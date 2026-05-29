@@ -33,9 +33,10 @@ test('admin creates game → player predicts → result recorded → leaderboard
     const playerCtx = await browser.newContext();
     const playerPage = await playerCtx.newPage();
     await playerPage.goto('/');
-    await playerPage.getByLabel('Game').selectOption({ label: gameName });
-    await playerPage.getByLabel('Password').fill(GAME_PW);
-    await playerPage.getByLabel('Display name').fill(DISPLAY_NAME);
+    await playerPage.getByRole('combobox').selectOption({ label: gameName });
+    await playerPage.getByLabel('Display name', { exact: true }).fill(DISPLAY_NAME);
+    await playerPage.getByLabel('Your password', { exact: true }).fill('alice-pw');
+    await playerPage.getByLabel('Game password', { exact: true }).fill(GAME_PW);
     await playerPage.getByRole('button', { name: 'Enter game' }).click();
 
     // My picks opens on the current phase — pre-tournament, that's Group Stage Round 1.

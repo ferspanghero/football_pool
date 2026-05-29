@@ -80,12 +80,23 @@ export async function setResult(page: Page, matchId: string, home: number, away:
     expect(res.ok()).toBeTruthy();
 }
 
-/** Enter a game through the `/` form as `displayName`. Leaves the page on the game home. */
-export async function enterGameUi(page: Page, gameName: string, password: string, displayName: string): Promise<void> {
+/**
+ * Sign up + enter a game through the `/` form as a first-time player. `gamePassword` is the
+ * shared join secret; `playerPassword` is the player's own (defaulted, since most specs don't
+ * exercise it). Leaves the page on the game home.
+ */
+export async function enterGameUi(
+    page: Page,
+    gameName: string,
+    gamePassword: string,
+    displayName: string,
+    playerPassword = 'player-pw',
+): Promise<void> {
     await page.goto('/');
-    await page.getByLabel('Game').selectOption({ label: gameName });
-    await page.getByLabel('Password').fill(password);
-    await page.getByLabel('Display name').fill(displayName);
+    await page.getByRole('combobox').selectOption({ label: gameName });
+    await page.getByLabel('Display name', { exact: true }).fill(displayName);
+    await page.getByLabel('Your password', { exact: true }).fill(playerPassword);
+    await page.getByLabel('Game password', { exact: true }).fill(gamePassword);
     await page.getByRole('button', { name: 'Enter game' }).click();
     // Wait for the post-login navigation so the player_session cookie is set before callers
     // (which may issue API requests on this context) proceed.

@@ -40,7 +40,7 @@ async function loginAlice(): Promise<{
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: 'pw', displayName: 'Alice' }),
+            body: JSON.stringify({ displayName: 'Alice', playerPassword: 'pw', gamePassword: 'pw' }),
         },
         env(db),
     );
@@ -50,6 +50,25 @@ async function loginAlice(): Promise<{
 }
 
 describe('PUT /api/me/predictions/:matchId', () => {
+    test('rejects with 403 for a knockout match whose teams are not yet assigned', async () => {
+        // Arrange — M73 (R32) still shows placeholder labels; the pre-tournament clock means it is not kickoff-locked
+        const { db, app, cookie } = await loginAlice();
+
+        // Act
+        const res = await app.request(
+            '/api/me/predictions/M73',
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Cookie: cookie },
+                body: JSON.stringify({ homeGoals: 1, awayGoals: 0 }),
+            },
+            env(db),
+        );
+
+        // Assert
+        expect(res.status).toBe(403);
+    });
+
     test('saves a valid prediction for an open match', async () => {
         // Arrange
         const { db, app, cookie } = await loginAlice();

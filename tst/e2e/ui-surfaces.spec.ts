@@ -82,7 +82,7 @@ test('E4c — match detail hides predictions before kickoff and shows them after
     await enterGameUi(alicePage, gameName, GAME_PW, 'Alice');
     expect((await alicePage.request.put('/api/me/predictions/G_A_1', { data: { homeGoals: 2, awayGoals: 1 } })).ok()).toBeTruthy();
     expect(
-        (await bobPage.request.post(`/api/games/${gameId}/enter`, { data: { password: GAME_PW, displayName: 'Bob' } })).ok(),
+        (await bobPage.request.post(`/api/games/${gameId}/enter`, { data: { displayName: 'Bob', playerPassword: 'player-pw', gamePassword: GAME_PW } })).ok(),
     ).toBeTruthy();
     expect((await bobPage.request.put('/api/me/predictions/G_A_1', { data: { homeGoals: 1, awayGoals: 0 } })).ok()).toBeTruthy();
     await setResult(adminPage, 'G_A_1', 2, 1);

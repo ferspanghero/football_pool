@@ -1,11 +1,11 @@
-/** Knockouts tab — read-only overview, grouped by phase, with slot labels and open/locked badges. */
+/** Knockouts tab — read-only overview, grouped by phase, with open/locked badges. */
 
 import { useOutletContext } from 'react-router-dom';
 import { PHASES, isKnockoutMatch } from '@shared/phases';
 import { formatKickoff } from '@shared/time';
-import { slotLabel } from '../lib/matchDisplay';
+import { matchSides } from '../lib/matchDisplay';
+import { TeamSide } from '../components/Flag';
 import type { GameContextValue } from './GameLayout';
-import type { KnockoutMatch } from '@shared/types';
 
 const KNOCKOUT_PHASES = PHASES.filter((p) => p.stage === 'KNOCKOUT');
 
@@ -18,7 +18,7 @@ export function Knockouts() {
         <>
             <h2>Knockouts</h2>
             {KNOCKOUT_PHASES.map((phase) => {
-                const rows = matches.filter((m): m is KnockoutMatch => isKnockoutMatch(m) && m.phase === phase.id);
+                const rows = matches.filter((m) => isKnockoutMatch(m) && m.phase === phase.id);
 
                 return (
                     <section key={phase.id}>
@@ -26,10 +26,11 @@ export function Knockouts() {
                         <ul>
                             {rows.map((m) => {
                                 const locked = Date.parse(m.kickoffUtc) <= now;
+                                const sides = matchSides(m, ctx.tournament.teams);
 
                                 return (
                                     <li key={m.id}>
-                                        {slotLabel(m.homeSlot)} vs {slotLabel(m.awaySlot)} —{' '}
+                                        <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} /> —{' '}
                                         {formatKickoff(m.kickoffUtc)}{' '}
                                         <span className={`badge${locked ? ' locked' : ''}`}>
                                             {locked ? 'locked' : 'open'}

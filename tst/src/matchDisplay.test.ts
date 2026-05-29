@@ -1,30 +1,35 @@
 import { describe, test, expect } from 'vitest';
 import { matchSides } from '@/lib/matchDisplay';
 import { MATCHES, TEAMS } from '@data/tournament';
-import type { GroupMatch } from '@shared/types';
+import type { Match } from '@shared/types';
 
 const groupMatch = MATCHES.find((m) => m.id === 'G_A_1')!; // Mexico vs South Africa
-const knockoutMatch = MATCHES.find((m) => m.id === 'M73')!; // unresolved bracket slots
+const knockoutMatch = MATCHES.find((m) => m.id === 'M73')!; // placeholder labels
 
 describe('matchSides', () => {
     test('returns team names with flags for a group match', () => {
+        // Arrange, Act
         const sides = matchSides(groupMatch, TEAMS);
 
+        // Assert
         expect(sides.home).toEqual({ name: 'Mexico', flag: '🇲🇽' });
         expect(sides.away).toEqual({ name: 'South Africa', flag: '🇿🇦' });
     });
 
-    test('returns slot labels with no flag for a knockout match', () => {
+    test('renders an unresolved knockout placeholder as its label with no flag', () => {
+        // Arrange, Act
         const sides = matchSides(knockoutMatch, TEAMS);
 
-        expect(sides.home.flag).toBeUndefined();
-        expect(sides.away.flag).toBeUndefined();
-        expect(sides.home.name).toMatch(/Group|Winner|Best 3rd/);
+        // Assert
+        expect(sides.home).toEqual({ name: 'Runner-up of Group A', flag: '' });
+        expect(sides.away).toEqual({ name: 'Runner-up of Group B', flag: '' });
     });
 
-    test('falls back to the team id with an empty flag when the team is unknown', () => {
-        const orphan: GroupMatch = { ...(groupMatch as GroupMatch), homeTeamId: 'ZZZ' };
+    test('falls back to the id with an empty flag when the team is unknown', () => {
+        // Arrange
+        const orphan: Match = { ...groupMatch, homeTeamId: 'ZZZ' };
 
+        // Act, Assert
         expect(matchSides(orphan, TEAMS).home).toEqual({ name: 'ZZZ', flag: '' });
     });
 });

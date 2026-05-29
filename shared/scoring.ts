@@ -16,7 +16,7 @@ import type {
 import { phaseById } from '@shared/phases';
 
 /** Flat bonus applied when a player's championTeamId matches the actual winner of the Final. */
-export const CHAMPION_BONUS = 20;
+export const CHAMPION_BONUS = 100;
 
 /**
  * Determine the tournament champion from the Final's resolved teams and 90-minute score.
@@ -105,6 +105,7 @@ export function computeLeaderboard(
         let totalPoints = 0;
         let exactScoreCount = 0;
         let correctOutcomeCount = 0;
+        let correctGoalDiffCount = 0;
         const playerPredictions = byPlayer.get(player.id) ?? [];
 
         for (const pred of playerPredictions) {
@@ -120,6 +121,7 @@ export function computeLeaderboard(
             const predDiff = pred.score.home - pred.score.away;
             const actDiff = actual.home - actual.away;
             if (Math.sign(predDiff) === Math.sign(actDiff)) correctOutcomeCount++;
+            if (Math.abs(predDiff) === Math.abs(actDiff)) correctGoalDiffCount++;
         }
 
         if (actualChampionTeamId !== undefined && player.championTeamId === actualChampionTeamId) {
@@ -132,6 +134,7 @@ export function computeLeaderboard(
             totalPoints,
             exactScoreCount,
             correctOutcomeCount,
+            correctGoalDiffCount,
         };
     });
 

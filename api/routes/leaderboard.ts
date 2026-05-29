@@ -13,8 +13,7 @@ import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
 import { resultsRepo } from '@api/repos/results';
 import { computeLeaderboard, determineChampion } from '@shared/scoring';
-import { resolveBracket } from '@shared/bracket';
-import { MATCHES, TEAMS } from '@data/tournament';
+import { MATCHES } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 import type { MatchId, Score } from '@shared/types';
 
@@ -34,8 +33,7 @@ leaderboardRoutes.get('/games/:id/leaderboard', async (c) => {
     const predictions = await predictionsRepo.findAllForGame(c.env.DB, gameId);
     const allResults = await resultsRepo.findAll(c.env.DB);
     const resultsMap = new Map<MatchId, Score>(allResults.map((r) => [r.matchId, r.score]));
-    const bracket = resolveBracket(TEAMS, MATCHES, resultsMap);
-    const actualChampionTeamId = determineChampion(bracket.get('M104'), resultsMap.get('M104'));
+    const actualChampionTeamId = determineChampion(MATCH_BY_ID.get('M104'), resultsMap.get('M104'));
     const rows = computeLeaderboard(players, predictions, resultsMap, MATCH_LOOKUP, actualChampionTeamId);
 
     return c.json({ rows });

@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, ApiError, type GameSummary } from '../api-client';
+import { api, ApiError, type GameSummary, type MePayload } from '../api-client';
 
 export function Entry() {
     const navigate = useNavigate();
     const [games, setGames] = useState<GameSummary[]>([]);
+    const [resume, setResume] = useState<MePayload | undefined>();
     const [selectedGameId, setSelectedGameId] = useState<string>('');
-    const [password, setPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
+    const [playerPassword, setPlayerPassword] = useState('');
+    const [gamePassword, setGamePassword] = useState('');
     const [error, setError] = useState<string | undefined>();
     const [submitting, setSubmitting] = useState(false);
 
@@ -20,6 +22,10 @@ export function Entry() {
                 if (r.games[0]) setSelectedGameId(String(r.games[0].id));
             })
             .catch((err: unknown) => setError(errMessage(err)));
+        // A valid cookie means we can offer one-tap resume without re-typing anything.
+        api.me()
+            .then(setResume)
+            .catch(() => setResume(undefined));
     }, []);
 
     const onSubmit = async (e: React.FormEvent) => {
@@ -28,7 +34,7 @@ export function Entry() {
         setSubmitting(true);
         try {
             const gameId = Number.parseInt(selectedGameId, 10);
-            await api.enterGame(gameId, password, displayName);
+            await api.enterGame(gameId, { displayName, playerPassword, gamePassword: gamePassword || undefined });
             navigate(`/game/${gameId}`);
         } catch (err: unknown) {
             setError(errMessage(err));
@@ -37,9 +43,24 @@ export function Entry() {
         }
     };
 
+    const resumeGameName = resume && games.find((g) => g.id === resume.gameId)?.name;
+
     return (
         <main className="container">
             <h1>FIFA 2026 Pool</h1>
+
+            {resume && (
+                <section className="resume-card">
+                    <span>
+                        Welcome back, <strong>{resume.displayName}</strong>
+                        {resumeGameName ? ` — ${resumeGameName}` : ''}
+                    </span>
+                    <button type="button" onClick={() => navigate(`/game/${resume.gameId}`)}>
+                        Continue
+                    </button>
+                </section>
+            )}
+
             {games.length === 0 && !error ? (
                 <p>No games yet. Ask the admin to create one.</p>
             ) : (
@@ -55,26 +76,36 @@ export function Entry() {
                         </select>
                     </label>
                     <label>
-                        Password
-                        <input
-                            type="password"
-                            autoComplete="current-password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
-                    </label>
-                    <label>
                         Display name
                         <input
                             type="text"
-                            autoComplete="nickname"
+                            autoComplete="username"
                             value={displayName}
                             onChange={(e) => setDisplayName(e.target.value)}
                             maxLength={40}
                             required
                         />
                     </label>
+                    <label>
+                        Your password
+                        <input
+                            type="password"
+                            autoComplete="current-password"
+                            value={playerPassword}
+                            onChange={(e) => setPlayerPassword(e.target.value)}
+                            required
+                        />
+                    </label>
+                    <label>
+                        Game password
+                        <input
+                            type="password"
+                            autoComplete="off"
+                            value={gamePassword}
+                            onChange={(e) => setGamePassword(e.target.value)}
+                        />
+                    </label>
+                    <small className="hint">Game password is only needed the first time you join a game.</small>
                     {error && <div className="error">{error}</div>}
                     <button type="submit" disabled={submitting}>
                         {submitting ? 'Entering…' : 'Enter game'}

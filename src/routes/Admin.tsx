@@ -99,11 +99,85 @@ function AdminPanel({ onLogout }: { onLogout: () => void }) {
                     Log out
                 </button>
             </nav>
+            <AdminClock />
             {tab === 'games' && <AdminGames />}
             {tab === 'results' && <AdminResults />}
             {tab === 'players' && <AdminPlayers />}
         </>
     );
+}
+
+/**
+ * Test-only clock control. Reads the current server clock on mount (so a refresh reflects a
+ * fixed clock rather than falsely showing real time) and swaps it via `POST /api/admin/test/clock`.
+ * The control is always editable; the endpoint is gated to `DEPLOYMENT_STAGE=TEST` server-side, so
+ * outside a test deployment Apply elegantly surfaces a "not available" message.
+ */
+function AdminClock() {
+    const { showToast } = useToast();
+    const [mode, setMode] = useState<'REALTIME' | 'FIXED'>('REALTIME');
+    const [localTime, setLocalTime] = useState('');
+    const [applying, setApplying] = useState(false);
+
+    useEffect(() => {
+        api.adminGetClock()
+            .then((clock) => {
+                setMode(clock.mode);
+                if (clock.iso) setLocalTime(isoToLocalInput(clock.iso));
+            })
+            .catch(() => undefined);
+    }, []);
+
+    const apply = async () => {
+        if (mode === 'FIXED' && !localTime) {
+            showToast('error', 'Pick a date and time first');
+
+            return;
+        }
+        setApplying(true);
+        try {
+            if (mode === 'FIXED') {
+                await api.adminSetClock({ mode: 'FIXED', iso: new Date(localTime).toISOString() });
+                showToast('success', `Clock fixed to ${new Date(localTime).toLocaleString()}`);
+            } else {
+                await api.adminSetClock({ mode: 'REALTIME' });
+                showToast('success', 'Clock set to real time');
+            }
+        } catch (err) {
+            const message =
+                err instanceof ApiError && err.status === 403
+                    ? 'Clock control is only available on a test deployment.'
+                    : err instanceof ApiError
+                      ? err.message
+                      : 'Failed to set clock';
+            showToast('error', message);
+        } finally {
+            setApplying(false);
+        }
+    };
+
+    return (
+        <section className="clock-control">
+            <strong>Test clock</strong>
+            <select value={mode} onChange={(e) => setMode(e.target.value as 'REALTIME' | 'FIXED')}>
+                <option value="REALTIME">Real time</option>
+                <option value="FIXED">Fixed time</option>
+            </select>
+            {mode === 'FIXED' && (
+                <input type="datetime-local" value={localTime} onChange={(e) => setLocalTime(e.target.value)} />
+            )}
+            <button type="button" onClick={apply} disabled={applying}>
+                {applying ? 'Applying…' : 'Apply'}
+            </button>
+        </section>
+    );
+}
+
+/** Convert a UTC ISO timestamp to the `YYYY-MM-DDTHH:mm` local value a `datetime-local` input wants. */
+function isoToLocalInput(iso: string): string {
+    const date = new Date(iso);
+
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
 function AdminGames() {
@@ -170,20 +244,37 @@ function AdminResults() {
     const [tournament, setTournament] = useState<TournamentData | undefined>();
     const [selectedPhase, setSelectedPhase] = useState<string>('GROUP_R1');
     const [savingId, setSavingId] = useState<string | undefined>();
-    const [drafts, setDrafts] = useState<Map<string, { home: number; away: number }>>(new Map());
+    // Score inputs as strings so an unrecorded match shows empty (not 0-0); seeded from saved results.
+    const [scores, setScores] = useState<Map<string, { home: string; away: string }>>(new Map());
 
     useEffect(() => {
-        api.tournament()
-            .then(setTournament)
+        Promise.all([api.tournament(), api.adminListResults()])
+            .then(([t, r]) => {
+                setTournament(t);
+                setScores(new Map(r.results.map((res) => [res.matchId, { home: String(res.home), away: String(res.away) }])));
+            })
             .catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
     }, []);
 
+    const setSide = (matchId: string, side: 'home' | 'away', value: string) => {
+        setScores((prev) => {
+            const next = new Map(prev);
+            next.set(matchId, { ...(next.get(matchId) ?? { home: '', away: '' }), [side]: value });
+
+            return next;
+        });
+    };
+
     const onSave = async (matchId: string) => {
-        const draft = drafts.get(matchId);
-        if (!draft) return;
+        const score = scores.get(matchId);
+        if (!score || score.home === '' || score.away === '') {
+            showToast('error', 'Enter both scores before saving.');
+
+            return;
+        }
         setSavingId(matchId);
         try {
-            await api.adminSetResult(matchId, draft);
+            await api.adminSetResult(matchId, { home: Number(score.home), away: Number(score.away) });
             showToast('success', `Saved ${matchId}`);
         } catch (err) {
             showToast('error', err instanceof ApiError ? err.message : 'Failed to save');
@@ -210,7 +301,7 @@ function AdminResults() {
             </label>
             <ul>
                 {filtered.map((m) => {
-                    const draft = drafts.get(m.id) ?? { home: 0, away: 0 };
+                    const score = scores.get(m.id) ?? { home: '', away: '' };
                     const sides = matchSides(m, teams);
 
                     return (
@@ -224,12 +315,8 @@ function AdminResults() {
                                 inputMode="numeric"
                                 min={0}
                                 max={20}
-                                value={draft.home}
-                                onChange={(e) => {
-                                    const next = new Map(drafts);
-                                    next.set(m.id, { home: Number(e.target.value), away: draft.away });
-                                    setDrafts(next);
-                                }}
+                                value={score.home}
+                                onChange={(e) => setSide(m.id, 'home', e.target.value)}
                             />
                             <span>-</span>
                             <input
@@ -237,12 +324,8 @@ function AdminResults() {
                                 inputMode="numeric"
                                 min={0}
                                 max={20}
-                                value={draft.away}
-                                onChange={(e) => {
-                                    const next = new Map(drafts);
-                                    next.set(m.id, { home: draft.home, away: Number(e.target.value) });
-                                    setDrafts(next);
-                                }}
+                                value={score.away}
+                                onChange={(e) => setSide(m.id, 'away', e.target.value)}
                             />
                             <button type="button" onClick={() => onSave(m.id)} disabled={savingId === m.id}>
                                 {savingId === m.id ? 'Saving…' : 'Save'}

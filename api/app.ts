@@ -21,8 +21,11 @@ import type { AppEnv } from '@api/types';
 export function buildApp(injectedClock?: ClockProvider): Hono<AppEnv> {
     const app = new Hono<AppEnv>();
     // Active clock for this app instance. Starts as the injected clock (unit tests) or the
-    // wall clock, and may be swapped at runtime by the test-only endpoint below.
+    // wall clock, and may be swapped at runtime by the test-only endpoint below. `activeMode`
+    // / `activeIso` mirror the runtime selection so the admin UI can read it back on reload.
     let activeClock: ClockProvider = injectedClock ?? WallClockProvider;
+    let activeMode: ClockMode = 'REALTIME';
+    let activeIso: string | undefined;
 
     app.use('*', async (c, next) => {
         c.set('clock', activeClock);
@@ -31,6 +34,14 @@ export function buildApp(injectedClock?: ClockProvider): Hono<AppEnv> {
 
     // Test-only clock control. Double-gated: requires an admin session AND
     // `DEPLOYMENT_STAGE === 'TEST'`, so it is permanently 403 in production.
+    app.get('/api/admin/test/clock', requireAdmin, (c) => {
+        if (c.env.DEPLOYMENT_STAGE !== 'TEST') {
+            return c.json({ error: { code: 'FORBIDDEN', message: 'clock control is disabled' } }, 403);
+        }
+
+        return c.json({ mode: activeMode, iso: activeIso ?? null, nowMs: activeClock() });
+    });
+
     app.post('/api/admin/test/clock', requireAdmin, async (c) => {
         if (c.env.DEPLOYMENT_STAGE !== 'TEST') {
             return c.json({ error: { code: 'FORBIDDEN', message: 'clock control is disabled' } }, 403);
@@ -50,10 +61,14 @@ export function buildApp(injectedClock?: ClockProvider): Hono<AppEnv> {
                     400,
                 );
             }
+            activeMode = 'FIXED';
+            activeIso = iso;
 
             return c.json({ mode, iso });
         }
         activeClock = WallClockProvider;
+        activeMode = 'REALTIME';
+        activeIso = undefined;
 
         return c.json({ mode });
     });

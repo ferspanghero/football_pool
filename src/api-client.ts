@@ -32,6 +32,8 @@ export type MePayload = {
     displayName: string;
     championTeamId: TeamId | null;
     predictions: Array<{ playerId: number; matchId: MatchId; score: Score; updatedAt: number }>;
+    /** Server clock (epoch ms) at fetch time — used to lock the UI against authoritative time. */
+    nowMs: number;
 };
 export type MatchPredictionsPayload = {
     predictions: Array<{ playerId: number; displayName: string; score: Score }>;
@@ -41,10 +43,13 @@ export type MatchPredictionsPayload = {
 export const api = {
     listGames: () => request<{ games: GameSummary[] }>('/api/games'),
     tournament: () => request<TournamentData>('/api/tournament'),
-    enterGame: (gameId: number, password: string, displayName: string) =>
+    enterGame: (
+        gameId: number,
+        body: { displayName: string; playerPassword: string; gamePassword?: string | undefined },
+    ) =>
         request<{ playerId: number; gameId: number; displayName: string }>(
             `/api/games/${gameId}/enter`,
-            { method: 'POST', body: { password, displayName } },
+            { method: 'POST', body },
         ),
     logout: () => request<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
     me: () => request<MePayload>('/api/me'),
@@ -69,12 +74,18 @@ export const api = {
             method: 'PUT',
             body: { homeGoals: score.home, awayGoals: score.away },
         }),
+    adminListResults: () =>
+        request<{ results: Array<{ matchId: MatchId; home: number; away: number }> }>('/api/admin/results'),
     adminDeletePlayer: (playerId: number) =>
         request<{ ok: true }>(`/api/admin/players/${playerId}`, { method: 'DELETE' }),
     adminListPlayers: (gameId: number) =>
         request<{ players: Array<{ id: number; displayName: string; championTeamId: TeamId | null }> }>(
             `/api/admin/games/${gameId}/players`,
         ),
+    adminSetClock: (body: { mode: 'REALTIME' } | { mode: 'FIXED'; iso: string }) =>
+        request<{ mode: string; iso?: string }>('/api/admin/test/clock', { method: 'POST', body }),
+    adminGetClock: () =>
+        request<{ mode: 'REALTIME' | 'FIXED'; iso: string | null; nowMs: number }>('/api/admin/test/clock'),
 };
 
 type RequestOptions = { method?: string; body?: unknown };

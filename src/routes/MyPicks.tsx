@@ -7,7 +7,7 @@
 import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api, ApiError } from '../api-client';
-import { buildPhaseGroups, currentPhaseIndex, isGroupMatch } from '@shared/phases';
+import { buildPhaseGroups, currentPhaseIndex, hasResolvedTeams, isGroupMatch } from '@shared/phases';
 import { formatKickoffDate, formatKickoffTime } from '@shared/time';
 import { flagEmoji } from '@data/flags';
 import { matchSides, type MatchSide } from '../lib/matchDisplay';
@@ -17,9 +17,9 @@ import type { Match, MatchId, Score } from '@shared/types';
 
 export function MyPicks() {
     const ctx = useOutletContext<GameContextValue>();
-    const now = Date.now();
+    const now = ctx.me.nowMs;
     const phaseGroups = useMemo(() => buildPhaseGroups(ctx.tournament.matches), [ctx.tournament.matches]);
-    const [phaseIdx, setPhaseIdx] = useState(() => currentPhaseIndex(phaseGroups, Date.now()));
+    const [phaseIdx, setPhaseIdx] = useState(() => currentPhaseIndex(phaseGroups, ctx.me.nowMs));
     const predictionByMatch = useMemo(
         () => new Map(ctx.me.predictions.map((p) => [p.matchId, p.score])),
         [ctx.me.predictions],
@@ -64,10 +64,15 @@ export function MyPicks() {
                                 const time = formatKickoffTime(m.kickoffUtc);
                                 const pick = predictionByMatch.get(m.id);
 
+                                // A knockout whose teams aren't decided yet can't be predicted.
+                                if (!hasResolvedTeams(m, ctx.tournament.teams)) {
+                                    return <LockedRow key={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} tbd />;
+                                }
+
                                 return Date.parse(m.kickoffUtc) <= now ? (
                                     <LockedRow key={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} />
                                 ) : (
-                                    <OpenRow key={m.id} matchId={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} />
+                                    <OpenRow key={m.id} matchId={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} onSaved={ctx.refresh} />
                                 );
                             })}
                         </div>
@@ -97,20 +102,23 @@ function groupByDay(matches: ReadonlyArray<Match>): { date: string; matches: Mat
 
 type RowProps = { prefix: string; home: MatchSide; away: MatchSide; pick: Score | undefined; time: string };
 
-/** A read-only match row (kickoff has passed): shows the saved pick and a "locked" badge. */
-function LockedRow({ prefix, home, away, pick, time }: RowProps) {
+/**
+ * A read-only match row: either kickoff has passed ("locked") or a knockout's teams aren't
+ * assigned yet ("TBD"). Shows the saved pick (or "–") and the appropriate badge.
+ */
+function LockedRow({ prefix, home, away, pick, time, tbd }: RowProps & { tbd?: boolean }) {
     return (
         <>
             <span className="pick-status">
-                <span className="badge locked">locked</span>
+                {tbd ? <span className="badge tbd">TBD</span> : <span className="badge locked">locked</span>}
             </span>
             <span className="pick-prefix">{prefix}</span>
             <span className="pick-team home">
                 <TeamSide side={home} />
             </span>
-            <span className="pick-val">{pick ? pick.home : '–'}</span>
+            <input className="pick-input" type="number" value={pick ? String(pick.home) : ''} disabled readOnly />
             <span className="pick-dash">-</span>
-            <span className="pick-val">{pick ? pick.away : '–'}</span>
+            <input className="pick-input" type="number" value={pick ? String(pick.away) : ''} disabled readOnly />
             <span className="pick-team away">
                 <TeamSide side={away} />
             </span>
@@ -121,19 +129,27 @@ function LockedRow({ prefix, home, away, pick, time }: RowProps) {
 }
 
 /** An editable match row (still open): score inputs, a Save button, and an "open" badge. */
-function OpenRow({ matchId, prefix, home, away, pick, time }: RowProps & { matchId: MatchId }) {
-    const [homeGoals, setHomeGoals] = useState(pick?.home ?? 0);
-    const [awayGoals, setAwayGoals] = useState(pick?.away ?? 0);
+function OpenRow({ matchId, prefix, home, away, pick, time, onSaved }: RowProps & { matchId: MatchId; onSaved: () => Promise<void> }) {
+    // Empty string (not 0) when there's no saved pick, since 0-0 is itself a valid prediction.
+    const [homeGoals, setHomeGoals] = useState(pick ? String(pick.home) : '');
+    const [awayGoals, setAwayGoals] = useState(pick ? String(pick.away) : '');
     const [saved, setSaved] = useState(pick !== undefined);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | undefined>();
 
     const onSave = async () => {
+        if (homeGoals === '' || awayGoals === '') {
+            setError('Enter both scores before saving.');
+
+            return;
+        }
         setSaving(true);
         setError(undefined);
         try {
-            await api.savePrediction(matchId, { home: homeGoals, away: awayGoals });
+            await api.savePrediction(matchId, { home: Number(homeGoals), away: Number(awayGoals) });
             setSaved(true);
+            // Refresh the shared session so the saved pick survives navigating away and back.
+            await onSaved();
         } catch (err) {
             setError(saveErrorMessage(err, 'This match has locked (kickoff passed). Refresh the page to see the latest.'));
         } finally {
@@ -141,8 +157,8 @@ function OpenRow({ matchId, prefix, home, away, pick, time }: RowProps & { match
         }
     };
 
-    const onChange = (set: (n: number) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
-        set(Number(e.target.value));
+    const onChange = (set: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        set(e.target.value);
         setSaved(false);
     };
 

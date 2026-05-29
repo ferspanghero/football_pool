@@ -9,6 +9,7 @@ CREATE TABLE players (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
     display_name TEXT NOT NULL COLLATE NOCASE,
+    password_hash TEXT NOT NULL,
     champion_team_id TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     UNIQUE(game_id, display_name)

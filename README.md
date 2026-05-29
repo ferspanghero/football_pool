@@ -5,7 +5,7 @@ A web app for a group of friends to predict FIFA 2026 World Cup match scores and
 ## How It Works
 
 1. An admin (single shared password) creates games and records real match results as they happen
-2. Players join a game with that game's shared password and a display name, predict scores for upcoming matches, and pick a tournament champion
+2. Players join a game with that game's shared password, choosing a display name and a personal password; on return they sign in with just that personal password (and resume automatically on the same device), predict scores for upcoming matches, and pick a tournament champion
 3. Predictions lock at each match's kickoff; the champion pick locks at the tournament's first kickoff
 4. The leaderboard is computed live from recorded results
 
@@ -36,7 +36,7 @@ Base points are multiplied by a phase factor (group stage ×1, escalating to the
 | Database | Cloudflare D1 (SQLite) |
 | Hosting | Cloudflare Pages + Workers (free tier) |
 
-Static tournament data (teams, fixtures, bracket template) lives in `data/`; only mutable state lives in D1. Time-dependent behavior reads a clock provider (`api/clock.ts`) so it can be controlled deterministically in tests.
+Static tournament data (teams and all fixtures) lives in `data/`; only mutable state lives in D1. Knockout fixtures start with placeholder team labels that an admin replaces with the actual teams (by editing `data/tournament.ts`) once each round's pairings are known — there is no automatic standings/bracket resolution. Time-dependent behavior reads a clock provider (`api/clock.ts`) so it can be controlled deterministically in tests.
 
 ## Getting Started
 
@@ -90,7 +90,7 @@ npx playwright test     # browser end-to-end tests
 ```
 src/             # Frontend (React) — routes, api-client
 api/             # Worker — routes, auth, clock, repositories
-shared/          # Pure logic shared by client + worker (scoring, bracket, phases, time, types)
+shared/          # Pure logic shared by client + worker (scoring, phases, time, types)
 data/            # Static tournament data
 migrations/      # D1 schema
 tst/             # Tests (unit, integration, e2e)

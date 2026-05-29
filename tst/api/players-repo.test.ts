@@ -13,9 +13,9 @@ describe('playersRepo', () => {
         gameId = g.id;
     });
 
-    test('findOrCreate creates a new player when display name does not exist', async () => {
+    test('create inserts a new player with a password hash', async () => {
         // Arrange, Act
-        const player = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
+        const player = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
 
         // Assert
         expect(player.id).toBeGreaterThan(0);
@@ -24,30 +24,54 @@ describe('playersRepo', () => {
         expect(player.championTeamId).toBeUndefined();
     });
 
-    test('findOrCreate returns the existing player on a case-insensitive name match', async () => {
+    test('create rejects a duplicate display name within the same game (case-insensitive)', async () => {
         // Arrange
-        const first = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
+        await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
 
-        // Act
-        const second = await playersRepo.findOrCreate(db, { gameId, displayName: 'alice' });
-
-        // Assert
-        expect(second.id).toBe(first.id);
+        // Act, Assert — the UNIQUE(game_id, display_name) COLLATE NOCASE constraint blocks the dupe
+        await expect(playersRepo.create(db, { gameId, displayName: 'alice', passwordHash: 'ph2' })).rejects.toThrow();
     });
 
-    test('findOrCreate isolates players per game', async () => {
+    test('create isolates players per game', async () => {
         // Arrange
         const g2 = await gamesRepo.create(db, { name: 'G2', passwordHash: 'h' });
-        const aliceG1 = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
-        const aliceG2 = await playersRepo.findOrCreate(db, { gameId: g2.id, displayName: 'Alice' });
+        const aliceG1 = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
+        const aliceG2 = await playersRepo.create(db, { gameId: g2.id, displayName: 'Alice', passwordHash: 'ph' });
 
         // Act, Assert
         expect(aliceG1.id).not.toBe(aliceG2.id);
     });
 
+    test('findByName returns the player and its stored password hash, case-insensitively', async () => {
+        // Arrange
+        const created = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
+
+        // Act
+        const found = await playersRepo.findByName(db, gameId, 'alice');
+
+        // Assert
+        expect(found?.id).toBe(created.id);
+        expect(found?.displayName).toBe('Alice');
+        expect(found?.passwordHash).toBe('ph');
+    });
+
+    test('findByName returns undefined for an unknown name', async () => {
+        // Arrange, Act, Assert
+        expect(await playersRepo.findByName(db, gameId, 'Nobody')).toBeUndefined();
+    });
+
+    test('findByName is scoped to the game', async () => {
+        // Arrange — same name in another game must not match
+        const g2 = await gamesRepo.create(db, { name: 'G2', passwordHash: 'h' });
+        await playersRepo.create(db, { gameId: g2.id, displayName: 'Alice', passwordHash: 'ph' });
+
+        // Act, Assert
+        expect(await playersRepo.findByName(db, gameId, 'Alice')).toBeUndefined();
+    });
+
     test('findById returns the player', async () => {
         // Arrange
-        const created = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
+        const created = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
 
         // Act
         const found = await playersRepo.findById(db, created.id);
@@ -61,11 +85,22 @@ describe('playersRepo', () => {
         expect(await playersRepo.findById(db, 999)).toBeUndefined();
     });
 
+    test('findById does not expose the password hash', async () => {
+        // Arrange
+        const created = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
+
+        // Act
+        const found = await playersRepo.findById(db, created.id);
+
+        // Assert — the general Player shape must never carry the secret
+        expect(found).not.toHaveProperty('passwordHash');
+    });
+
     test('listByGame returns all players in the game sorted by name', async () => {
         // Arrange
-        await playersRepo.findOrCreate(db, { gameId, displayName: 'Bob' });
-        await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
-        await playersRepo.findOrCreate(db, { gameId, displayName: 'Carol' });
+        await playersRepo.create(db, { gameId, displayName: 'Bob', passwordHash: 'ph' });
+        await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
+        await playersRepo.create(db, { gameId, displayName: 'Carol', passwordHash: 'ph' });
 
         // Act
         const players = await playersRepo.listByGame(db, gameId);
@@ -81,7 +116,7 @@ describe('playersRepo', () => {
 
     test('setChampionTeamId persists the champion pick', async () => {
         // Arrange
-        const player = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
+        const player = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
 
         // Act
         await playersRepo.setChampionTeamId(db, player.id, 'BRA');
@@ -93,7 +128,7 @@ describe('playersRepo', () => {
 
     test('setChampionTeamId can clear the pick with undefined', async () => {
         // Arrange
-        const player = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
+        const player = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
         await playersRepo.setChampionTeamId(db, player.id, 'BRA');
 
         // Act
@@ -106,7 +141,7 @@ describe('playersRepo', () => {
 
     test('delete removes the player', async () => {
         // Arrange
-        const player = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
+        const player = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'ph' });
 
         // Act
         await playersRepo.delete(db, player.id);

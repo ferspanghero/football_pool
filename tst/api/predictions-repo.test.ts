@@ -13,7 +13,7 @@ describe('predictionsRepo', () => {
         db = createTestDb();
         const g = await gamesRepo.create(db, { name: 'G1', passwordHash: 'h' });
         gameId = g.id;
-        const p = await playersRepo.findOrCreate(db, { gameId, displayName: 'Alice' });
+        const p = await playersRepo.create(db, { gameId, displayName: 'Alice', passwordHash: 'h' });
         aliceId = p.id;
     });
 
@@ -55,7 +55,7 @@ describe('predictionsRepo', () => {
 
     test('findByMatch returns all players predictions for a match', async () => {
         // Arrange
-        const bob = await playersRepo.findOrCreate(db, { gameId, displayName: 'Bob' });
+        const bob = await playersRepo.create(db, { gameId, displayName: 'Bob', passwordHash: 'h' });
         await predictionsRepo.upsert(db, { playerId: aliceId, matchId: 'G_A_1', score: { home: 2, away: 1 } });
         await predictionsRepo.upsert(db, { playerId: bob.id, matchId: 'G_A_1', score: { home: 1, away: 1 } });
         await predictionsRepo.upsert(db, { playerId: aliceId, matchId: 'G_B_1', score: { home: 0, away: 0 } });
@@ -71,7 +71,7 @@ describe('predictionsRepo', () => {
     test('findAllForGame returns predictions only for that game', async () => {
         // Arrange
         const g2 = await gamesRepo.create(db, { name: 'G2', passwordHash: 'h' });
-        const bobG2 = await playersRepo.findOrCreate(db, { gameId: g2.id, displayName: 'Bob' });
+        const bobG2 = await playersRepo.create(db, { gameId: g2.id, displayName: 'Bob', passwordHash: 'h' });
         await predictionsRepo.upsert(db, { playerId: aliceId, matchId: 'G_A_1', score: { home: 2, away: 1 } });
         await predictionsRepo.upsert(db, { playerId: bobG2.id, matchId: 'G_A_1', score: { home: 0, away: 0 } });
 

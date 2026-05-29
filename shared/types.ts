@@ -31,40 +31,25 @@ export type Team = {
 };
 
 /**
- * Description of one side of a knockout match. The actual team is resolved at runtime
- * from match results — see `resolveBracket` in `shared/bracket.ts`.
+ * A single fixture in the tournament.
  *
- * `BEST_THIRD_OF` lists the groups whose 3rd-placed team is a candidate for this slot,
- * per FIFA's published R32 mapping for the 48-team / 12-group format.
+ * Group matches always reference real teams. Knockout matches start with **placeholder** ids
+ * (e.g. `"Winner of Group A"`, `"Best 3rd from A/B/C/D/F"`) and are filled in with the actual
+ * team ids by editing `data/tournament.ts` once each round's pairings are known — there is no
+ * automatic standings/bracket resolution. A knockout match is "resolved" (and predictable) once
+ * both ids are real teams; see `hasResolvedTeams` in `shared/phases.ts`.
  */
-export type BracketSlot =
-    | { kind: 'GROUP_WINNER'; group: GroupLetter }
-    | { kind: 'GROUP_RUNNER_UP'; group: GroupLetter }
-    | { kind: 'BEST_THIRD_OF'; eligibleGroups: GroupLetter[] }
-    | { kind: 'KNOCKOUT_WINNER'; matchId: MatchId }
-    | { kind: 'KNOCKOUT_LOSER'; matchId: MatchId };
-
-export type GroupMatch = {
+export type Match = {
     id: MatchId;
     phase: PhaseId;
-    group: GroupLetter;
     /** ISO 8601 UTC timestamp. Predictions for this match lock at this time. */
     kickoffUtc: string;
+    /** Real `TeamId` once known; a placeholder label while a knockout pairing is undecided. */
     homeTeamId: TeamId;
     awayTeamId: TeamId;
+    /** Set for group-stage matches only. */
+    group?: GroupLetter;
 };
-
-export type KnockoutMatch = {
-    id: MatchId;
-    phase: PhaseId;
-    /** ISO 8601 UTC timestamp. */
-    kickoffUtc: string;
-    homeSlot: BracketSlot;
-    awaySlot: BracketSlot;
-};
-
-/** A single fixture in the tournament — either a group match or a knockout. */
-export type Match = GroupMatch | KnockoutMatch;
 
 /** Final score at the end of 90 minutes (extra time / penalties are not counted). */
 export type Score = {
@@ -92,4 +77,6 @@ export type LeaderboardRow = {
     totalPoints: number;
     exactScoreCount: number;
     correctOutcomeCount: number;
+    /** Predictions whose absolute goal difference matched the actual result. */
+    correctGoalDiffCount: number;
 };

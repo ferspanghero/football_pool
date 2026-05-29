@@ -63,6 +63,12 @@ test('E2 — a prediction save is rejected once kickoff passes, with a refresh h
     });
     expect(retry.status()).toBe(403);
 
+    // After a reload the UI reflects the server clock: G_A_1 is now a read-only locked row —
+    // its editable inputs are gone and a "locked" badge is shown.
+    await playerPage.reload();
+    await expect(playerPage.locator('input[data-match="G_A_1"]')).toHaveCount(0);
+    await expect(playerPage.getByText('locked').first()).toBeVisible();
+
     await adminCtx.close();
     await playerCtx.close();
 });

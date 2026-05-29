@@ -1,9 +1,14 @@
-/** Leaderboard tab — sortable-looking table (server already sorts). */
+/** Leaderboard tab — standings table with a scoring-rules blurb. */
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../api-client';
+import { POINTS, CHAMPION_BONUS } from '@shared/scoring';
+import { PHASES } from '@shared/phases';
 import type { LeaderboardRow } from '@shared/types';
+
+const MIN_MULTIPLIER = Math.min(...PHASES.map((p) => p.multiplier));
+const MAX_MULTIPLIER = Math.max(...PHASES.map((p) => p.multiplier));
 
 export function Leaderboard() {
     const { gameId } = useParams();
@@ -20,6 +25,23 @@ export function Leaderboard() {
     return (
         <>
             <h2>Leaderboard</h2>
+
+            <section className="leaderboard-rules">
+                <strong>How points work</strong>
+                <ul>
+                    <li>Exact score: <b>{POINTS.EXACT}</b></li>
+                    <li>Right result + goal difference: <b>{POINTS.OUTCOME_AND_GD}</b></li>
+                    <li>Right result only: <b>{POINTS.OUTCOME_ONLY}</b></li>
+                    <li>Right goal difference only: <b>{POINTS.GD_ONLY}</b></li>
+                    <li>Nothing right: <b>{POINTS.WRONG}</b></li>
+                </ul>
+                <p>
+                    Each match's points are multiplied by the round (group stage ×{MIN_MULTIPLIER}, rising to ×
+                    {MAX_MULTIPLIER} for the final). Correctly picking the champion adds a <b>+{CHAMPION_BONUS}</b> bonus.
+                    Knockout matches are scored on the 90-minute result.
+                </p>
+            </section>
+
             {error && <div className="error">{error}</div>}
             <table className="leaderboard-table">
                 <thead>
@@ -27,8 +49,9 @@ export function Leaderboard() {
                         <th>Rank</th>
                         <th>Player</th>
                         <th>Points</th>
-                        <th>Exact</th>
-                        <th>Outcome</th>
+                        <th>Exact Predictions</th>
+                        <th>Right Outcome</th>
+                        <th>Right Goal Diff</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -39,6 +62,7 @@ export function Leaderboard() {
                             <td>{r.totalPoints}</td>
                             <td>{r.exactScoreCount}</td>
                             <td>{r.correctOutcomeCount}</td>
+                            <td>{r.correctGoalDiffCount}</td>
                         </tr>
                     ))}
                 </tbody>

@@ -11,6 +11,7 @@ import { Hono } from 'hono';
 import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
 import { requirePlayer } from '@api/middleware';
+import { hasResolvedTeams } from '@shared/phases';
 import { MATCHES, FIRST_KICKOFF_UTC, TEAMS } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 
@@ -24,6 +25,9 @@ predictionRoutes.put('/me/predictions/:matchId', requirePlayer, async (c) => {
     const matchId = c.req.param('matchId');
     const match = MATCH_BY_ID.get(matchId);
     if (!match) return c.json({ error: { code: 'NOT_FOUND', message: 'match not found' } }, 404);
+    if (!hasResolvedTeams(match, TEAMS)) {
+        return c.json({ error: { code: 'FORBIDDEN', message: 'match teams not assigned yet' } }, 403);
+    }
     if (c.var.clock() >= Date.parse(match.kickoffUtc)) {
         return c.json({ error: { code: 'FORBIDDEN', message: 'prediction locked at kickoff' } }, 403);
     }

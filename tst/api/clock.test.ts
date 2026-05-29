@@ -135,7 +135,7 @@ describe('POST /api/admin/test/clock', () => {
         // Arrange — game + player, with a player cookie that never expires
         const db = createTestDb();
         const game = await gamesRepo.create(db, { name: 'G', passwordHash: await hashPassword('pw') });
-        const player = await playersRepo.findOrCreate(db, { gameId: game.id, displayName: 'Alice' });
+        const player = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
         const app = buildApp();
         const env = testEnv(db);
         const cookie = await adminCookie();
@@ -167,5 +167,76 @@ describe('POST /api/admin/test/clock', () => {
         const real = await postClock(app, { mode: 'REALTIME' }, { cookie, env });
         expect(real.status).toBe(200);
         expect((await savePrediction()).status).toBe(200);
+    });
+});
+
+describe('GET /api/admin/test/clock', () => {
+    function getClock(app: ReturnType<typeof buildApp>, opts: { cookie?: string; env: AppEnv['Bindings'] }) {
+        return app.request(
+            '/api/admin/test/clock',
+            { headers: { ...(opts.cookie ? { Cookie: opts.cookie } : {}) } },
+            opts.env,
+        );
+    }
+
+    test('rejects requests without an admin cookie (401)', async () => {
+        // Arrange
+        const db = createTestDb();
+        const app = buildApp();
+
+        // Act
+        const res = await getClock(app, { env: testEnv(db) });
+
+        // Assert
+        expect(res.status).toBe(401);
+    });
+
+    test('rejects when DEPLOYMENT_STAGE is not TEST (403)', async () => {
+        // Arrange
+        const db = createTestDb();
+        const app = buildApp();
+
+        // Act
+        const res = await getClock(app, { cookie: await adminCookie(), env: baseEnv(db) });
+
+        // Assert
+        expect(res.status).toBe(403);
+    });
+
+    test('reports REALTIME with no timestamp by default', async () => {
+        // Arrange
+        const db = createTestDb();
+        const app = buildApp();
+
+        // Act
+        const res = await getClock(app, { cookie: await adminCookie(), env: testEnv(db) });
+        const body = (await res.json()) as { mode: string; iso: string | null };
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect(body.mode).toBe('REALTIME');
+        expect(body.iso).toBeNull();
+    });
+
+    test('reflects a FIXED clock previously set via POST', async () => {
+        // Arrange — set a FIXED clock, then read it back on the same app instance
+        const db = createTestDb();
+        const app = buildApp();
+        const env = testEnv(db);
+        const cookie = await adminCookie();
+        const iso = '2026-06-11T19:00:00Z';
+        await app.request(
+            '/api/admin/test/clock',
+            { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify({ mode: 'FIXED', iso }) },
+            env,
+        );
+
+        // Act
+        const res = await getClock(app, { cookie, env });
+        const body = (await res.json()) as { mode: string; iso: string | null };
+
+        // Assert
+        expect(body.mode).toBe('FIXED');
+        expect(body.iso).toBe(iso);
     });
 });

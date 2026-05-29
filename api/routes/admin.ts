@@ -56,6 +56,12 @@ adminRoutes.post('/admin/logout', (c) => {
 
 adminRoutes.get('/admin/whoami', requireAdmin, (c) => c.json({ admin: true }));
 
+adminRoutes.get('/admin/results', requireAdmin, async (c) => {
+    const results = await resultsRepo.findAll(c.env.DB);
+
+    return c.json({ results: results.map((r) => ({ matchId: r.matchId, home: r.score.home, away: r.score.away })) });
+});
+
 adminRoutes.post('/admin/games', requireAdmin, async (c) => {
     const body = await readJson<{ name?: unknown; password?: unknown }>(c.req.raw);
     const name = typeof body?.name === 'string' ? body.name.trim() : '';

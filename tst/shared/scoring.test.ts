@@ -210,12 +210,12 @@ describe('computeLeaderboard', () => {
         expect(board[0]!.totalPoints).toBe(42);
     });
 
-    test('tracks exactScoreCount and correctOutcomeCount independently', () => {
-        // Arrange — Alice: 1 exact (also counts as correct outcome) + 1 outcome-only
+    test('tracks exact, outcome, and goal-diff counts independently', () => {
+        // Arrange — Alice: G_A_1 exact (|GD| right), G_B_1 outcome-only (4-1 |GD|=3 vs 2-1 |GD|=1, wrong)
         const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
         const predictions = [
-            { playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 } }, // exact
-            { playerId: 1, matchId: 'G_B_1', score: { home: 4, away: 1 } }, // outcome only
+            { playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 } }, // exact → outcome + |GD|
+            { playerId: 1, matchId: 'G_B_1', score: { home: 4, away: 1 } }, // outcome only, |GD| wrong
         ];
         const results = new Map([
             ['G_A_1', { home: 2, away: 1 }],
@@ -228,11 +228,12 @@ describe('computeLeaderboard', () => {
         // Assert
         expect(board[0]!.exactScoreCount).toBe(1);
         expect(board[0]!.correctOutcomeCount).toBe(2);
+        expect(board[0]!.correctGoalDiffCount).toBe(1);
     });
 
-    test('CHAMPION_BONUS is 20', () => {
+    test('CHAMPION_BONUS is 100', () => {
         // Arrange, Act, Assert
-        expect(CHAMPION_BONUS).toBe(20);
+        expect(CHAMPION_BONUS).toBe(100);
     });
 
     test('skips a prediction whose match is not in the match lookup', () => {
@@ -257,10 +258,11 @@ describe('computeLeaderboard', () => {
         // Act
         const board = computeLeaderboard(players, predictions, results, matchesById, undefined);
 
-        // Assert — only |GD| matches → 2 pts, no exact, no outcome
+        // Assert — only |GD| matches → 2 pts, no exact, no outcome, but goal-diff counts
         expect(board[0]!.totalPoints).toBe(2);
         expect(board[0]!.correctOutcomeCount).toBe(0);
         expect(board[0]!.exactScoreCount).toBe(0);
+        expect(board[0]!.correctGoalDiffCount).toBe(1);
     });
 
     test('tiebreaks by correctOutcomeCount when total and exact are tied', () => {

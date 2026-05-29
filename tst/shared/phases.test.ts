@@ -5,10 +5,11 @@ import {
     phaseOrder,
     isGroupMatch,
     isKnockoutMatch,
+    hasResolvedTeams,
     buildPhaseGroups,
     currentPhaseIndex,
 } from '@shared/phases';
-import { MATCHES } from '@data/tournament';
+import { MATCHES, TEAMS } from '@data/tournament';
 import type { Match } from '@shared/types';
 
 const ORDER = ['GROUP_R1', 'GROUP_R2', 'GROUP_R3', 'R32', 'R16', 'QF', 'SF', 'THIRD', 'FINAL'] as const;
@@ -44,6 +45,40 @@ describe('isGroupMatch / isKnockoutMatch', () => {
         // Arrange, Act, Assert
         expect(MATCHES.filter(isGroupMatch)).toHaveLength(72);
         expect(MATCHES.filter(isKnockoutMatch)).toHaveLength(32);
+    });
+});
+
+describe('hasResolvedTeams', () => {
+    test('is true for a group match (real teams on both sides)', () => {
+        // Arrange
+        const groupMatch = MATCHES.find((m) => m.id === 'G_A_1')!;
+
+        // Act, Assert
+        expect(hasResolvedTeams(groupMatch, TEAMS)).toBe(true);
+    });
+
+    test('is false for a knockout match still using placeholder labels', () => {
+        // Arrange
+        const knockout = MATCHES.find((m) => m.id === 'M73')!;
+
+        // Act, Assert
+        expect(hasResolvedTeams(knockout, TEAMS)).toBe(false);
+    });
+
+    test('is true once both knockout sides are real team ids', () => {
+        // Arrange
+        const resolved: Match = { ...MATCHES.find((m) => m.id === 'M73')!, homeTeamId: 'MEX', awayTeamId: 'BRA' };
+
+        // Act, Assert
+        expect(hasResolvedTeams(resolved, TEAMS)).toBe(true);
+    });
+
+    test('is false when only one side is a real team', () => {
+        // Arrange
+        const halfResolved: Match = { ...MATCHES.find((m) => m.id === 'M73')!, homeTeamId: 'MEX' };
+
+        // Act, Assert
+        expect(hasResolvedTeams(halfResolved, TEAMS)).toBe(false);
     });
 });
 
