@@ -10,7 +10,7 @@ const SECRET = 'test-secret-32-chars-12345678901234';
 const futureMatch = MATCHES.find((m) => m.id === 'G_A_1')!; // first kickoff in tournament
 
 function env(db: D1Database): AppEnv['Bindings'] {
-    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored', DEPLOY_ORIGIN: 'https://x' };
+    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored' };
 }
 
 /**

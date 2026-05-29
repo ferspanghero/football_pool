@@ -51,7 +51,8 @@ export const POINTS = {
  * - Wrong outcome but same absolute goal difference → `POINTS.GD_ONLY`
  * - Otherwise → `POINTS.WRONG`
  *
- * The result must be multiplied by `PHASE_MULTIPLIER[phase]` to get the contribution to a player's total.
+ * Multiply by `phaseById(phase).multiplier` (or call `scoreMatchWeighted`) to get a prediction's
+ * contribution to a player's total.
  */
 export function scoreMatch(prediction: Score, actual: Score): number {
     if (prediction.home === actual.home && prediction.away === actual.away) return POINTS.EXACT;

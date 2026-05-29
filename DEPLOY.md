@@ -35,9 +35,6 @@ openssl rand -base64 48 | npx wrangler secret put SESSION_SECRET
 # Admin password hash.
 echo -n "your-admin-password" | npx tsx scripts/hash-admin-password.ts \
     | npx wrangler secret put ADMIN_PASSWORD_HASH
-
-# Your deploy origin (the Pages URL).
-echo -n "https://your-app.pages.dev" | npx wrangler secret put DEPLOY_ORIGIN
 ```
 
 > **Never set `DEPLOYMENT_STAGE` in production.** It is a local/test-only flag that enables
@@ -74,7 +71,7 @@ Or wire to git push via the Cloudflare Pages dashboard.
 
 ```sh
 cp .dev.vars.example .dev.vars
-# Fill in SESSION_SECRET, DEPLOY_ORIGIN, and ADMIN_PASSWORD_HASH.
+# Fill in SESSION_SECRET and ADMIN_PASSWORD_HASH.
 # Generate the admin hash the same way as step 4 above:
 echo -n "your-admin-password" | npx tsx scripts/hash-admin-password.ts
 

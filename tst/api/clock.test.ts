@@ -21,7 +21,7 @@ const FAR_FUTURE_EXP = 4102444800;
 const firstMatch = MATCHES.find((m) => m.id === 'G_A_1')!;
 
 function baseEnv(db: D1Database): AppEnv['Bindings'] {
-    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored', DEPLOY_ORIGIN: 'https://x' };
+    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored' };
 }
 
 function testEnv(db: D1Database): AppEnv['Bindings'] {

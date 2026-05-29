@@ -9,10 +9,7 @@
  */
 export type PhaseId = 'GROUP_R1' | 'GROUP_R2' | 'GROUP_R3' | 'R32' | 'R16' | 'QF' | 'SF' | 'THIRD' | 'FINAL';
 
-/**
- * Group vs knockout — the single source of this distinction, carried by the `Phase` entity.
- * Group standings and knockout propagation are genuinely different algorithms (see bracket.ts).
- */
+/** Group vs knockout — the single source of this distinction, carried by the `Phase` entity. */
 export type Stage = 'GROUP' | 'KNOCKOUT';
 
 /** Group letter A-L. FIFA 2026 has 12 groups of 4. */

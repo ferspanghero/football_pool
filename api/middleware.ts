@@ -1,10 +1,10 @@
 /**
- * Hono middleware: per-request authentication and origin checks.
+ * Hono middleware: per-request authentication.
  *
  * - `requirePlayer` — gate routes that act on behalf of a logged-in player.
  * - `requireAdmin` — gate routes that mutate global state (game creation, result entry).
- * - `requireOrigin` — defense-in-depth CSRF guard for state-changing endpoints, on top of
- *   the SameSite=Strict cookie attribute.
+ *
+ * CSRF is mitigated by the `SameSite=Strict` attribute on the session cookies.
  */
 
 import type { MiddlewareHandler } from 'hono';
@@ -32,17 +32,6 @@ export const requireAdmin: MiddlewareHandler<AppEnv> = async (c, next) => {
     const payload = await verifyCookie(token, c.env.SESSION_SECRET, c.var.clock());
     if (!isAdminSession(payload)) return unauthenticated(c);
     c.set('admin', true);
-    await next();
-
-    return undefined;
-};
-
-/** Rejects requests whose `Origin` header does not match `DEPLOY_ORIGIN`. */
-export const requireOrigin: MiddlewareHandler<AppEnv> = async (c, next) => {
-    const origin = c.req.header('Origin');
-    if (!origin || origin !== c.env.DEPLOY_ORIGIN) {
-        return c.json({ error: { code: 'FORBIDDEN', message: 'origin not allowed' } }, 403);
-    }
     await next();
 
     return undefined;

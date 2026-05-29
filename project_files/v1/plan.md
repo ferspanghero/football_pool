@@ -49,7 +49,7 @@ football_pool/
 │   ├── index.ts          Worker entry (exports the built app)
 │   ├── app.ts            Hono app + route registration + clock wiring + test-clock endpoint
 │   ├── clock.ts          ClockProvider (wall clock / fixed)
-│   ├── middleware.ts     Auth + origin checks
+│   ├── middleware.ts     Auth (player / admin session)
 │   ├── crypto.ts         PBKDF2 hashing + HMAC cookie sign/verify
 │   ├── routes/
 │   └── repos/            D1 access
@@ -187,8 +187,8 @@ football_pool/
 
 ### A2 — Middleware
 - `requirePlayer` / `requireAdmin` validate the respective HMAC cookie and attach context (401 otherwise).
-- `requireOrigin` rejects writes whose `Origin` ≠ the deploy origin.
 - Cookie expiry is checked against `c.var.clock()`.
+- CSRF is mitigated by the `SameSite=Strict` attribute on the session cookies.
 
 ### A3 — Public + tournament routes
 - `GET /api/games` — `[{ id, name }]`.
@@ -272,12 +272,12 @@ football_pool/
 ## Deployment (X)
 
 ### X1 — Local secrets
-- `.dev.vars` (gitignored) holds `SESSION_SECRET`, `ADMIN_PASSWORD_HASH`, `DEPLOY_ORIGIN`, and `DEPLOYMENT_STAGE=TEST` (local/test only — enables the test clock endpoint; never set in production).
+- `.dev.vars` (gitignored) holds `SESSION_SECRET`, `ADMIN_PASSWORD_HASH`, and `DEPLOYMENT_STAGE=TEST` (local/test only — enables the test clock endpoint; never set in production).
 - `scripts/hash-admin-password.ts` reads a password on stdin and prints the `salt:hash` string for `ADMIN_PASSWORD_HASH`.
 
 ### X2 — Cloudflare setup
 - `wrangler d1 create football-pool` (one-time); `wrangler d1 migrations apply football-pool --remote` per migration.
-- `wrangler secret put` for `SESSION_SECRET`, `ADMIN_PASSWORD_HASH`, `DEPLOY_ORIGIN`.
+- `wrangler secret put` for `SESSION_SECRET` and `ADMIN_PASSWORD_HASH`.
 - Cloudflare Pages project linked; build `npm run build`, output `dist/`; `/api/*` routed to the Worker.
 
 ### X3 — Deploy verification

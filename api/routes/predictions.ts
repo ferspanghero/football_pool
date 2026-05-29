@@ -11,11 +11,11 @@ import { Hono } from 'hono';
 import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
 import { requirePlayer } from '@api/middleware';
+import { isValidGoal, MAX_GOALS, readJson } from '@api/http';
 import { hasResolvedTeams } from '@shared/phases';
 import { MATCHES, FIRST_KICKOFF_UTC, TEAMS } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 
-const MAX_GOALS = 99;
 const MATCH_BY_ID = new Map(MATCHES.map((m) => [m.id, m]));
 const VALID_TEAM_IDS = new Set(TEAMS.map((t) => t.id));
 
@@ -62,15 +62,3 @@ predictionRoutes.put('/me/champion', requirePlayer, async (c) => {
 
     return c.json({ ok: true });
 });
-
-function isValidGoal(value: unknown): value is number {
-    return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_GOALS;
-}
-
-async function readJson<T>(req: Request): Promise<T | undefined> {
-    try {
-        return (await req.json()) as T;
-    } catch {
-        return undefined;
-    }
-}

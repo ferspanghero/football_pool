@@ -17,6 +17,7 @@ import { gamesRepo } from '@api/repos/games';
 import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
 import { requirePlayer } from '@api/middleware';
+import { readJson } from '@api/http';
 import type { AppEnv } from '@api/types';
 
 const PLAYER_COOKIE = 'player_session';
@@ -103,11 +104,3 @@ authRoutes.get('/me', requirePlayer, async (c) => {
         nowMs: c.var.clock(),
     });
 });
-
-async function readJson<T>(req: Request): Promise<T | undefined> {
-    try {
-        return (await req.json()) as T;
-    } catch {
-        return undefined;
-    }
-}

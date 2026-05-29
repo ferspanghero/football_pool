@@ -1,12 +1,11 @@
 import { describe, test, expect } from 'vitest';
 import { Hono } from 'hono';
-import { requirePlayer, requireAdmin, requireOrigin } from '@api/middleware';
+import { requirePlayer, requireAdmin } from '@api/middleware';
 import { signCookie } from '@api/crypto';
 import { WallClockProvider } from '@api/clock';
 import type { AppEnv } from '@api/types';
 
 const SECRET = 'test-secret-32-chars-12345678901234';
-const ORIGIN = 'https://pool.example';
 
 function buildApp(): Hono<AppEnv> {
     const app = new Hono<AppEnv>();
@@ -20,8 +19,6 @@ function buildApp(): Hono<AppEnv> {
     app.get('/player/me', (c) => c.json({ gameId: c.var.gameId, playerId: c.var.playerId }));
     app.use('/admin/*', requireAdmin);
     app.get('/admin/ping', (c) => c.json({ admin: c.var.admin }));
-    app.use('/origin/*', requireOrigin);
-    app.post('/origin/x', (c) => c.json({ ok: true }));
 
     return app;
 }
@@ -31,7 +28,6 @@ function env(): AppEnv['Bindings'] {
         DB: {} as D1Database,
         SESSION_SECRET: SECRET,
         ADMIN_PASSWORD_HASH: 'ignored',
-        DEPLOY_ORIGIN: ORIGIN,
     };
 }
 
@@ -153,48 +149,5 @@ describe('requireAdmin', () => {
 
         // Assert
         expect(res.status).toBe(401);
-    });
-});
-
-describe('requireOrigin', () => {
-    test('passes when Origin matches DEPLOY_ORIGIN', async () => {
-        // Arrange
-        const app = buildApp();
-
-        // Act
-        const res = await app.request(
-            '/origin/x',
-            { method: 'POST', headers: { Origin: ORIGIN } },
-            env(),
-        );
-
-        // Assert
-        expect(res.status).toBe(200);
-    });
-
-    test('rejects with 403 when Origin is missing', async () => {
-        // Arrange
-        const app = buildApp();
-
-        // Act
-        const res = await app.request('/origin/x', { method: 'POST' }, env());
-
-        // Assert
-        expect(res.status).toBe(403);
-    });
-
-    test('rejects with 403 when Origin does not match', async () => {
-        // Arrange
-        const app = buildApp();
-
-        // Act
-        const res = await app.request(
-            '/origin/x',
-            { method: 'POST', headers: { Origin: 'https://evil.example' } },
-            env(),
-        );
-
-        // Assert
-        expect(res.status).toBe(403);
     });
 });

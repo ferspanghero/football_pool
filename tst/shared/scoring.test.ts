@@ -266,48 +266,9 @@ describe('computeLeaderboard', () => {
     });
 
     test('tiebreaks by correctOutcomeCount when total and exact are tied', () => {
-        // Arrange — Alice: 1 outcome+GD (=5) + 1 wrong = 5 pts, 0 exact, 1 outcome
-        //          Bob:   1 |GD|-only (=2) + 1 |GD|-only (=2) + 1 (=0) → no... let me redesign
-        // Need same total (5) and same exact (0), but different outcome count.
-        // Alice: 1 outcome+GD (sign match, |GD| match) = 5 pts, outcomeCount=1
-        // Bob:   1 |GD|-only = 2 pts, plus... can't reach 5 with 0 outcome without exact.
-        // Try: both have 0 exact and total 7, different outcome counts.
-        // Alice: 1 outcome+GD (5) + 1 |GD|-only (2) = 7 pts, outcome=1
-        // Bob:   1 outcome+GD (5) + 1 outcome only on a 2nd match (3) — that's 8. Different.
-        // Bob:   3 |GD|-only (2*3=6 wait we only have 2 matches). Hmm.
-        // Try: Alice 7 (5+2), Bob 7 (3+...): Bob 3+? No 3+x=7 needs x=4 unattainable.
-        // Use 3 matches: Alice 5+2+0=7 (outcome=1); Bob 5+2+0=7 (outcome=1). Same.
-        // Actually it's surprisingly hard. Let me use champion bonus to equalize.
-        // Alice: champion bonus 20 + 1 wrong (0) = 20, outcomeCount=0, exactCount=0
-        // Bob: 0 + 2 outcome+GD (5+5)+1 wrong (0) = 10 ... no still uneven.
-        // Easier: rely on result equality via direct point arithmetic.
-        // Alice: 1 outcome+GD = 5, outcomeCount=1, exactCount=0
-        // Bob:   2 |GD|-only + 1 wrong = 4, no — can't tie at 5
-        // Use champion bonus: Alice has championTeamId='BRA' matching, +20.
-        //                    Bob has 20 from 4 outcome+GD matches = 5*4 = 20. Need 4 matches.
-        // 4 matches makes the lookup big. Use a different approach:
-        // Alice: 1 outcome+GD (5 pts) → exactCount=0, outcomeCount=1
-        // Carol: 1 |GD|-only (2 pts) + 1 outcome-only (3 pts) = 5 pts → exactCount=0, outcomeCount=1
-        // Same total (5), same exact (0), same outcome (1). Won't differentiate.
-        // Use:
-        // Alice: 2 outcome-only (3+3) = 6 pts, exactCount=0, outcomeCount=2
-        // Bob:   1 outcome+GD (5) + 1 |GD|-only (2) = 7 → not equal.
-        // Let me use 3 matches and align.
-        // Alice: 1 outcome+GD + 1 outcome-only + 1 wrong = 5+3+0 = 8, exact=0, outcome=2
-        // Bob:   2 outcome+GD + 1 wrong = 5+5+0 = 10. Not 8.
-        // Bob:   1 outcome+GD + 1 outcome-only + 1 wrong = same as Alice. Same outcome count.
-        // Bob:   1 outcome+GD + 1 |GD|-only + 1 outcome-only = 5+2+3 = 10. Off.
-        // Try 3 matches, both score 5 pts:
-        // Alice: 1 outcome+GD = 5, exact=0, outcome=1
-        // Bob:   1 |GD|-only (2) + 1 outcome-only (3) = 5, exact=0, outcome=1
-        // Same again.
-        // The structure: outcome+GD => outcomeCount=1, points=5; outcome-only => outcome=1, points=3;
-        // |GD|-only => outcome=0, points=2; exact => outcome=1, points=7.
-        // To get same totalPoints + same exactCount but different outcomeCount, need:
-        //   Alice: K matches yielding total T, with O_a correct outcomes
-        //   Bob:   J matches yielding total T, with O_b ≠ O_a correct outcomes
-        // Example: Alice 4 |GD|-only = 8 pts, exact=0, outcome=0. Bob 1 outcome+GD + 1 outcome-only = 8, exact=0, outcome=2. Total=8 both!
-        // 4 matches needed for Alice though.
+        // Arrange — both players reach 8 points with 0 exact scores, differing only in outcome count:
+        //   Alice: 4 |GD|-only predictions (2 pts each), 0 correct outcomes
+        //   Bob:   1 outcome+GD (5 pts) + 1 outcome-only (3 pts), 2 correct outcomes
         const players = [
             { id: 1, displayName: 'Alice', championTeamId: undefined },
             { id: 2, displayName: 'Bob', championTeamId: undefined },

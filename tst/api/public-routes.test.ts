@@ -7,7 +7,7 @@ import type { AppEnv } from '@api/types';
 const SECRET = 'test-secret-32-chars-12345678901234';
 
 function env(db: D1Database): AppEnv['Bindings'] {
-    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored', DEPLOY_ORIGIN: 'https://x' };
+    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored' };
 }
 
 describe('GET /api/games', () => {

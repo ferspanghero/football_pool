@@ -138,6 +138,7 @@ function constantTimeEqualStrings(a: string, b: string): boolean {
 function toBase64Url(bytes: Uint8Array): string {
     let binary = '';
     for (const b of bytes) binary += String.fromCharCode(b);
+
     return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
@@ -146,6 +147,7 @@ function fromBase64Url(s: string): Uint8Array {
     const binary = atob(padded);
     const out = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+
     return out;
 }
 

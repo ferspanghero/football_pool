@@ -11,8 +11,6 @@ export type AppEnv = {
         DB: D1Database;
         SESSION_SECRET: string;
         ADMIN_PASSWORD_HASH: string;
-        /** Deploy origin (https://...) used to enforce same-origin on state-changing routes. */
-        DEPLOY_ORIGIN: string;
         /**
          * Deployment stage. When `'TEST'`, the test-only clock-control endpoint
          * (`POST /api/admin/test/clock`) is enabled. Unset (or any other value) in production.

@@ -1,6 +1,6 @@
 /**
  * Repository for the `games` table — one row per friend-group "pool". Each game has a
- * unique case-insensitive name and a scrypt-hashed shared password.
+ * unique case-insensitive name and a PBKDF2-hashed shared password.
  */
 
 /** A game (= one friend-group's pool). `name` is unique case-insensitive across all games. */
@@ -73,18 +73,11 @@ export const gamesRepo = {
     },
 
     /**
-     * Delete a game and all of its game-scoped state (its players and their predictions).
-     * Global `match_results` are the official tournament record and are left untouched.
-     *
-     * Deletes are issued explicitly in dependency order so the wipe holds regardless of
-     * whether foreign-key cascade enforcement is enabled on the connection.
+     * Delete a game. Its players and their predictions are removed by the `ON DELETE CASCADE`
+     * foreign keys (enforced by D1 and by the test harness). Global `match_results` have no
+     * foreign key to games — they are the official tournament record and are left untouched.
      */
     async delete(db: D1Database, id: number): Promise<void> {
-        await db
-            .prepare('DELETE FROM predictions WHERE player_id IN (SELECT id FROM players WHERE game_id = ?)')
-            .bind(id)
-            .run();
-        await db.prepare('DELETE FROM players WHERE game_id = ?').bind(id).run();
         await db.prepare('DELETE FROM games WHERE id = ?').bind(id).run();
     },
 };

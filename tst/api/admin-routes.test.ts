@@ -17,7 +17,6 @@ async function adminEnv(db: D1Database): Promise<AppEnv['Bindings']> {
         DB: db,
         SESSION_SECRET: SECRET,
         ADMIN_PASSWORD_HASH: await hashPassword(ADMIN_PASSWORD),
-        DEPLOY_ORIGIN: 'https://x',
     };
 }
 

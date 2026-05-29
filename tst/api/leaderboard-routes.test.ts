@@ -11,11 +11,10 @@ import { FIRST_KICKOFF_UTC, MATCHES } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 
 const SECRET = 'test-secret-32-chars-12345678901234';
-const ORIGIN = 'https://pool.example';
 const firstMatch = MATCHES.find((m) => m.id === 'G_A_1')!;
 
 function env(db: D1Database): AppEnv['Bindings'] {
-    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored', DEPLOY_ORIGIN: ORIGIN };
+    return { DB: db, SESSION_SECRET: SECRET, ADMIN_PASSWORD_HASH: 'ignored' };
 }
 
 /** App pinned to 5 minutes before first kickoff — every match is open. */

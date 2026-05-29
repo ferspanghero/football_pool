@@ -19,12 +19,12 @@ import { gamesRepo } from '@api/repos/games';
 import { playersRepo } from '@api/repos/players';
 import { resultsRepo } from '@api/repos/results';
 import { requireAdmin } from '@api/middleware';
+import { isValidGoal, MAX_GOALS, readJson } from '@api/http';
 import { MATCHES } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 
 const ADMIN_COOKIE = 'admin_session';
 const ADMIN_COOKIE_MAX_AGE_SECONDS = 24 * 60 * 60; // 24 hours
-const MAX_GOALS = 99;
 const MAX_GAME_NAME_LENGTH = 60;
 const MATCH_BY_ID = new Map(MATCHES.map((m) => [m.id, m]));
 
@@ -131,15 +131,3 @@ adminRoutes.delete('/admin/players/:id', requireAdmin, async (c) => {
 
     return c.json({ ok: true });
 });
-
-function isValidGoal(value: unknown): value is number {
-    return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= MAX_GOALS;
-}
-
-async function readJson<T>(req: Request): Promise<T | undefined> {
-    try {
-        return (await req.json()) as T;
-    } catch {
-        return undefined;
-    }
-}

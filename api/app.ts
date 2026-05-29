@@ -11,6 +11,7 @@
 import { Hono } from 'hono';
 import { FixedClockProvider, WallClockProvider, type ClockProvider, type ClockMode } from '@api/clock';
 import { requireAdmin } from '@api/middleware';
+import { readJson } from '@api/http';
 import { publicRoutes } from '@api/routes/public';
 import { authRoutes } from '@api/routes/auth';
 import { predictionRoutes } from '@api/routes/predictions';
@@ -80,12 +81,4 @@ export function buildApp(injectedClock?: ClockProvider): Hono<AppEnv> {
     app.route('/api', adminRoutes);
 
     return app;
-}
-
-async function readJson<T>(req: Request): Promise<T | undefined> {
-    try {
-        return (await req.json()) as T;
-    } catch {
-        return undefined;
-    }
 }
