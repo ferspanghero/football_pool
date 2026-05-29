@@ -69,6 +69,8 @@ export const api = {
     adminLogout: () => request<{ ok: true }>('/api/admin/logout', { method: 'POST' }),
     adminCreateGame: (name: string, password: string) =>
         request<{ game: GameSummary }>('/api/admin/games', { method: 'POST', body: { name, password } }),
+    adminDeleteGame: (gameId: number) =>
+        request<{ ok: true }>(`/api/admin/games/${gameId}`, { method: 'DELETE' }),
     adminSetResult: (matchId: MatchId, score: Score) =>
         request<{ ok: true }>(`/api/admin/results/${matchId}`, {
             method: 'PUT',

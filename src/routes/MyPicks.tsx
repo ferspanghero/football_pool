@@ -162,6 +162,16 @@ function OpenRow({ matchId, prefix, home, away, pick, time, onSaved }: RowProps 
         setSaved(false);
     };
 
+    // Auto-save when focus leaves the whole row (vs. moving between this row's own inputs/button,
+    // which share `data-match`). An untouched row is left alone; an unchanged saved row isn't
+    // re-sent; a half-filled row still surfaces the "enter both" warning via onSave.
+    const onRowBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        if ((e.relatedTarget as HTMLElement | null)?.getAttribute('data-match') === matchId) return;
+        if (homeGoals === '' && awayGoals === '') return;
+        if (saved) return;
+        void onSave();
+    };
+
     return (
         <>
             <span className="pick-status">
@@ -171,14 +181,14 @@ function OpenRow({ matchId, prefix, home, away, pick, time, onSaved }: RowProps 
             <span className="pick-team home">
                 <TeamSide side={home} />
             </span>
-            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} />
+            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} onBlur={onRowBlur} />
             <span className="pick-dash">-</span>
-            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} />
+            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} onBlur={onRowBlur} />
             <span className="pick-team away">
                 <TeamSide side={away} />
             </span>
             <span className="pick-action">
-                <button type="button" data-match={matchId} onClick={onSave} disabled={saving}>
+                <button type="button" data-match={matchId} tabIndex={-1} onClick={onSave} disabled={saving}>
                     {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
                 </button>
             </span>

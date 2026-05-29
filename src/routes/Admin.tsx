@@ -6,7 +6,7 @@ import { api, ApiError, type GameSummary, type TournamentData } from '../api-cli
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import { TeamSide } from '../components/Flag';
-import { matchSides } from '../lib/matchDisplay';
+import { matchSides, type MatchSide } from '../lib/matchDisplay';
 
 type AdminTab = 'games' | 'results' | 'players';
 
@@ -208,13 +208,32 @@ function AdminGames() {
         }
     };
 
+    // Deleting a game cascade-removes its players and their predictions, so confirm first.
+    const onDelete = async (game: GameSummary) => {
+        if (!window.confirm(`Delete "${game.name}"? This removes its players and all their predictions.`)) {
+            return;
+        }
+        try {
+            await api.adminDeleteGame(game.id);
+            await reload();
+            showToast('success', 'Game deleted');
+        } catch (err) {
+            showToast('error', err instanceof ApiError ? err.message : 'Failed to delete');
+        }
+    };
+
     return (
         <>
             <h2>Games</h2>
             <ul>
                 {games.map((g) => (
-                    <li key={g.id}>
-                        {g.name} (id {g.id})
+                    <li key={g.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0' }}>
+                        <span>
+                            {g.name} (id {g.id})
+                        </span>
+                        <button type="button" className="secondary" onClick={() => onDelete(g)}>
+                            Delete
+                        </button>
                     </li>
                 ))}
             </ul>
@@ -243,8 +262,8 @@ function AdminResults() {
     const { showToast } = useToast();
     const [tournament, setTournament] = useState<TournamentData | undefined>();
     const [selectedPhase, setSelectedPhase] = useState<string>('GROUP_R1');
-    const [savingId, setSavingId] = useState<string | undefined>();
-    // Score inputs as strings so an unrecorded match shows empty (not 0-0); seeded from saved results.
+    // Recorded scores as strings so an unrecorded match shows empty (not 0-0); seeded from saved
+    // results and updated on save so a saved value survives switching phases away and back.
     const [scores, setScores] = useState<Map<string, { home: string; away: string }>>(new Map());
 
     useEffect(() => {
@@ -256,31 +275,8 @@ function AdminResults() {
             .catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
     }, []);
 
-    const setSide = (matchId: string, side: 'home' | 'away', value: string) => {
-        setScores((prev) => {
-            const next = new Map(prev);
-            next.set(matchId, { ...(next.get(matchId) ?? { home: '', away: '' }), [side]: value });
-
-            return next;
-        });
-    };
-
-    const onSave = async (matchId: string) => {
-        const score = scores.get(matchId);
-        if (!score || score.home === '' || score.away === '') {
-            showToast('error', 'Enter both scores before saving.');
-
-            return;
-        }
-        setSavingId(matchId);
-        try {
-            await api.adminSetResult(matchId, { home: Number(score.home), away: Number(score.away) });
-            showToast('success', `Saved ${matchId}`);
-        } catch (err) {
-            showToast('error', err instanceof ApiError ? err.message : 'Failed to save');
-        } finally {
-            setSavingId(undefined);
-        }
+    const onRowSaved = (matchId: string, score: { home: string; away: string }) => {
+        setScores((prev) => new Map(prev).set(matchId, score));
     };
 
     const teams = tournament?.teams ?? [];
@@ -300,41 +296,80 @@ function AdminResults() {
                 </select>
             </label>
             <ul>
-                {filtered.map((m) => {
-                    const score = scores.get(m.id) ?? { home: '', away: '' };
-                    const sides = matchSides(m, teams);
-
-                    return (
-                        <li key={m.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0' }}>
-                            <code>{m.id}</code>
-                            <span style={{ flex: 1 }}>
-                                <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} />
-                            </span>
-                            <input
-                                type="number"
-                                inputMode="numeric"
-                                min={0}
-                                max={20}
-                                value={score.home}
-                                onChange={(e) => setSide(m.id, 'home', e.target.value)}
-                            />
-                            <span>-</span>
-                            <input
-                                type="number"
-                                inputMode="numeric"
-                                min={0}
-                                max={20}
-                                value={score.away}
-                                onChange={(e) => setSide(m.id, 'away', e.target.value)}
-                            />
-                            <button type="button" onClick={() => onSave(m.id)} disabled={savingId === m.id}>
-                                {savingId === m.id ? 'Saving…' : 'Save'}
-                            </button>
-                        </li>
-                    );
-                })}
+                {filtered.map((m) => (
+                    <ResultRow key={m.id} matchId={m.id} sides={matchSides(m, teams)} initial={scores.get(m.id)} onSaved={onRowSaved} />
+                ))}
             </ul>
         </>
+    );
+}
+
+/**
+ * One Admin Results row. Records a match's 90-minute score. Mirrors the My-picks row UX: leaving
+ * the row (vs. moving between its own inputs/button) auto-saves a complete, changed entry, the
+ * Save button is out of the tab order, and a half-filled row still warns on save.
+ */
+function ResultRow({
+    matchId,
+    sides,
+    initial,
+    onSaved,
+}: {
+    matchId: string;
+    sides: { home: MatchSide; away: MatchSide };
+    initial: { home: string; away: string } | undefined;
+    onSaved: (matchId: string, score: { home: string; away: string }) => void;
+}) {
+    const { showToast } = useToast();
+    const [home, setHome] = useState(initial?.home ?? '');
+    const [away, setAway] = useState(initial?.away ?? '');
+    const [saved, setSaved] = useState(initial !== undefined);
+    const [saving, setSaving] = useState(false);
+
+    const onSave = async () => {
+        if (home === '' || away === '') {
+            showToast('error', 'Enter both scores before saving.');
+
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.adminSetResult(matchId, { home: Number(home), away: Number(away) });
+            setSaved(true);
+            onSaved(matchId, { home, away });
+            showToast('success', `Saved ${matchId}`);
+        } catch (err) {
+            showToast('error', err instanceof ApiError ? err.message : 'Failed to save');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const onChange = (set: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        set(e.target.value);
+        setSaved(false);
+    };
+
+    const onRowBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        if ((e.relatedTarget as HTMLElement | null)?.getAttribute('data-match') === matchId) return;
+        if (home === '' && away === '') return;
+        if (saved) return;
+        void onSave();
+    };
+
+    return (
+        <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0' }}>
+            <code>{matchId}</code>
+            <span style={{ flex: 1 }}>
+                <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} />
+            </span>
+            <input type="number" data-match={matchId} inputMode="numeric" min={0} max={20} value={home} onChange={onChange(setHome)} onBlur={onRowBlur} />
+            <span>-</span>
+            <input type="number" data-match={matchId} inputMode="numeric" min={0} max={20} value={away} onChange={onChange(setAway)} onBlur={onRowBlur} />
+            <button type="button" data-match={matchId} tabIndex={-1} onClick={onSave} disabled={saving}>
+                {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+            </button>
+        </li>
     );
 }
 

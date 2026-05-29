@@ -110,3 +110,7 @@ End-to-end test scenarios (preconditions, steps, expected outcomes) are document
 ## Deployment
 
 See [`DEPLOY.md`](DEPLOY.md) for one-time Cloudflare setup and the per-deploy steps.
+
+## License
+
+Released under the [MIT License](LICENSE).
