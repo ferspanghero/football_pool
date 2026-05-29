@@ -226,7 +226,7 @@ football_pool/
 
 ### A10 — Error envelope
 - All errors returned as `{ error: { code, message } }` with codes UNAUTHENTICATED / FORBIDDEN / NOT_FOUND / VALIDATION / RATE_LIMITED / INTERNAL.
-- `RATE_LIMITED` is reserved for rate limiting, which is tracked as a backlog item (`tasks.md` BL6 — the Workers Rate Limiting binding on the auth endpoints), not part of v1.
+- `RATE_LIMITED` is reserved in the taxonomy, but v1 implements no app-level rate limiting — it relies on Cloudflare's automatic edge DDoS mitigation (free tier, all plans) for abuse protection.
 
 ## Display Time (T)
 
