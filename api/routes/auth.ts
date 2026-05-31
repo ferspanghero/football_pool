@@ -16,6 +16,7 @@ import { hashPassword, signCookie, verifyPassword } from '@api/crypto';
 import { gamesRepo } from '@api/repos/games';
 import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
+import { boostsRepo } from '@api/repos/boosts';
 import { requirePlayer } from '@api/middleware';
 import { readJson } from '@api/http';
 import type { AppEnv } from '@api/types';
@@ -93,6 +94,7 @@ authRoutes.get('/me', requirePlayer, async (c) => {
     const player = await playersRepo.findById(c.env.DB, playerId);
     if (!player) return c.json({ error: { code: 'NOT_FOUND', message: 'player not found' } }, 404);
     const predictions = await predictionsRepo.findByPlayer(c.env.DB, playerId);
+    const boosts = await boostsRepo.findByPlayer(c.env.DB, playerId);
 
     return c.json({
         playerId: player.id,
@@ -100,6 +102,7 @@ authRoutes.get('/me', requirePlayer, async (c) => {
         displayName: player.displayName,
         championTeamId: player.championTeamId ?? null,
         predictions,
+        boosts: boosts.map((b) => ({ phaseId: b.phaseId, matchId: b.matchId })),
         // Server clock, so the client locks against authoritative time (not the browser's).
         nowMs: c.var.clock(),
     });

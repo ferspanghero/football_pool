@@ -48,6 +48,48 @@ describe('predictionsRepo', () => {
         ).rejects.toThrow();
     });
 
+    test('upsert persists a first-scorer pick and findByPlayer returns it', async () => {
+        // Arrange, Act
+        await predictionsRepo.upsert(db, { playerId: aliceId, matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'HOME' });
+        const list = await predictionsRepo.findByPlayer(db, aliceId);
+
+        // Assert
+        expect(list[0]!.firstScorer).toBe('HOME');
+    });
+
+    test('upsert leaves first-scorer undefined when none is given', async () => {
+        // Arrange, Act
+        await predictionsRepo.upsert(db, { playerId: aliceId, matchId: 'G_A_1', score: { home: 2, away: 1 } });
+        const list = await predictionsRepo.findByPlayer(db, aliceId);
+
+        // Assert
+        expect(list[0]!.firstScorer).toBeUndefined();
+    });
+
+    test('upsert overwrites an existing first-scorer pick', async () => {
+        // Arrange
+        await predictionsRepo.upsert(db, { playerId: aliceId, matchId: 'G_A_1', score: { home: 1, away: 0 }, firstScorer: 'HOME' });
+
+        // Act
+        await predictionsRepo.upsert(db, { playerId: aliceId, matchId: 'G_A_1', score: { home: 0, away: 0 }, firstScorer: 'NONE' });
+        const list = await predictionsRepo.findByPlayer(db, aliceId);
+
+        // Assert
+        expect(list[0]!.firstScorer).toBe('NONE');
+    });
+
+    test('rejects an invalid first-scorer value at the DB level', async () => {
+        // Arrange, Act, Assert — only HOME/AWAY/NONE permitted by the CHECK constraint
+        await expect(
+            predictionsRepo.upsert(db, {
+                playerId: aliceId,
+                matchId: 'G_A_1',
+                score: { home: 1, away: 0 },
+                firstScorer: 'BOTH' as never,
+            }),
+        ).rejects.toThrow();
+    });
+
     test('findByPlayer returns empty array for a player with no predictions', async () => {
         // Arrange, Act, Assert
         expect(await predictionsRepo.findByPlayer(db, aliceId)).toEqual([]);

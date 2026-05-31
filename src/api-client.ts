@@ -3,7 +3,7 @@
  * 2xx and rejects with an `ApiError` carrying the server's `{ code, message }` envelope.
  */
 
-import type { LeaderboardRow, Match, MatchId, Score, Team, TeamId } from '@shared/types';
+import type { FirstScorer, LeaderboardRow, Match, MatchId, PhaseId, Score, Team, TeamId } from '@shared/types';
 
 export type ErrorCode =
     | 'UNAUTHENTICATED'
@@ -31,7 +31,9 @@ export type MePayload = {
     gameId: number;
     displayName: string;
     championTeamId: TeamId | null;
-    predictions: Array<{ playerId: number; matchId: MatchId; score: Score; updatedAt: number }>;
+    predictions: Array<{ playerId: number; matchId: MatchId; score: Score; firstScorer?: FirstScorer; updatedAt: number }>;
+    /** One boosted match per phase (BL7). */
+    boosts: Array<{ phaseId: PhaseId; matchId: MatchId }>;
     /** Server clock (epoch ms) at fetch time — used to lock the UI against authoritative time. */
     nowMs: number;
 };
@@ -43,6 +45,10 @@ export type MatchPredictionsPayload = {
 export const api = {
     listGames: () => request<{ games: GameSummary[] }>('/api/games'),
     tournament: () => request<TournamentData>('/api/tournament'),
+    results: () =>
+        request<{ results: Array<{ matchId: MatchId; home: number; away: number; firstScorer: FirstScorer | null }> }>(
+            '/api/results',
+        ),
     enterGame: (
         gameId: number,
         body: { displayName: string; playerPassword: string; gamePassword?: string | undefined },
@@ -53,13 +59,15 @@ export const api = {
         ),
     logout: () => request<{ ok: true }>('/api/auth/logout', { method: 'POST' }),
     me: () => request<MePayload>('/api/me'),
-    savePrediction: (matchId: MatchId, score: Score) =>
+    savePrediction: (matchId: MatchId, score: Score, firstScorer?: FirstScorer) =>
         request<{ ok: true }>(`/api/me/predictions/${matchId}`, {
             method: 'PUT',
-            body: { homeGoals: score.home, awayGoals: score.away },
+            body: { homeGoals: score.home, awayGoals: score.away, firstScorer: firstScorer ?? null },
         }),
     saveChampion: (teamId: TeamId) =>
         request<{ ok: true }>('/api/me/champion', { method: 'PUT', body: { teamId } }),
+    saveBoost: (phaseId: PhaseId, matchId: MatchId | null) =>
+        request<{ ok: true }>(`/api/me/boosts/${phaseId}`, { method: 'PUT', body: { matchId } }),
     leaderboard: (gameId: number) => request<{ rows: LeaderboardRow[] }>(`/api/games/${gameId}/leaderboard`),
     matchPredictions: (gameId: number, matchId: MatchId) =>
         request<MatchPredictionsPayload>(`/api/games/${gameId}/predictions/${matchId}`),
@@ -71,13 +79,15 @@ export const api = {
         request<{ game: GameSummary }>('/api/admin/games', { method: 'POST', body: { name, password } }),
     adminDeleteGame: (gameId: number) =>
         request<{ ok: true }>(`/api/admin/games/${gameId}`, { method: 'DELETE' }),
-    adminSetResult: (matchId: MatchId, score: Score) =>
+    adminSetResult: (matchId: MatchId, score: Score, firstScorer?: FirstScorer) =>
         request<{ ok: true }>(`/api/admin/results/${matchId}`, {
             method: 'PUT',
-            body: { homeGoals: score.home, awayGoals: score.away },
+            body: { homeGoals: score.home, awayGoals: score.away, firstScorer: firstScorer ?? null },
         }),
     adminListResults: () =>
-        request<{ results: Array<{ matchId: MatchId; home: number; away: number }> }>('/api/admin/results'),
+        request<{ results: Array<{ matchId: MatchId; home: number; away: number; firstScorer: FirstScorer | null }> }>(
+            '/api/admin/results',
+        ),
     adminDeletePlayer: (playerId: number) =>
         request<{ ok: true }>(`/api/admin/players/${playerId}`, { method: 'DELETE' }),
     adminListPlayers: (gameId: number) =>

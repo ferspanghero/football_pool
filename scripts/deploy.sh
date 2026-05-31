@@ -39,14 +39,20 @@ fi
 
 # 1. Cloudflare auth — interactive only the first time; later runs skip it.
 #    NOTE: `wrangler whoami` exits 0 even when unauthenticated, so detect auth from its OUTPUT,
-#    not its exit code.
+#    not its exit code. Match a POSITIVE signal (whoami actually listing the account): a missing
+#    token and a *revoked* one fail with different messages, so anything short of a real account
+#    listing — "not authenticated", "permission denied", "Failed to … retrieve account IDs" — must
+#    trigger a fresh login rather than be assumed authenticated.
+#    Use "Account Name" (the account-table header, printed only when an account is actually
+#    listed) as the signal — NOT "Account ID", which also appears in the *failure* message
+#    "Failed to automatically retrieve account IDs".
 step "Checking Cloudflare login"
 whoami_out="$(npx wrangler whoami </dev/null 2>&1 || true)"
-if printf '%s' "$whoami_out" | grep -qiE 'not authenticated|please run .*wrangler login'; then
-    echo "    not logged in — a browser window will open for 'wrangler login'…"
-    npx wrangler login
-else
+if printf '%s' "$whoami_out" | grep -qiE 'Account Name'; then
     echo "    already logged in (run 'npx wrangler whoami' to see which account)."
+else
+    echo "    not logged in or token expired/revoked — a browser window will open for 'wrangler login'…"
+    npx wrangler login
 fi
 
 # 2. Ensure the D1 database exists and its id is written into wrangler.toml.

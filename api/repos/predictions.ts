@@ -3,13 +3,15 @@
  * Predictions are mutable until the match's kickoff (enforced at the API layer).
  */
 
-import type { MatchId, Score } from '@shared/types';
+import type { FirstScorer, MatchId, Score } from '@shared/types';
 
 /** A player's score prediction for one match. Primary key is `(playerId, matchId)`. */
 export type Prediction = {
     playerId: number;
     matchId: MatchId;
     score: Score;
+    /** Optional first-to-score pick (BL6); undefined when the player hasn't made one. */
+    firstScorer?: FirstScorer | undefined;
     /** Unix epoch seconds of the last write. */
     updatedAt: number;
 };
@@ -19,6 +21,7 @@ type Row = {
     match_id: string;
     home_goals: number;
     away_goals: number;
+    first_scorer: string | null;
     updated_at: number;
 };
 
@@ -27,38 +30,42 @@ function mapRow(row: Row): Prediction {
         playerId: row.player_id,
         matchId: row.match_id,
         score: { home: row.home_goals, away: row.away_goals },
+        firstScorer: (row.first_scorer ?? undefined) as FirstScorer | undefined,
         updatedAt: row.updated_at,
     };
 }
 
+const SELECT_COLS = 'player_id, match_id, home_goals, away_goals, first_scorer, updated_at';
+
 export const predictionsRepo = {
     /**
-     * Insert or overwrite a prediction. Rejects scores below zero via the CHECK constraint.
-     * Callers must enforce kickoff lock and result-of-result validation at the API layer.
+     * Insert or overwrite a prediction. Rejects scores below zero (and an invalid `firstScorer`)
+     * via CHECK constraints. The first-scorer pick is always written from `input.firstScorer`
+     * (cleared to NULL when absent), so callers send the player's full current row. Callers must
+     * enforce the kickoff lock and team-resolution validation at the API layer.
      */
     async upsert(
         db: D1Database,
-        input: { playerId: number; matchId: MatchId; score: Score },
+        input: { playerId: number; matchId: MatchId; score: Score; firstScorer?: FirstScorer | undefined },
     ): Promise<void> {
         await db
             .prepare(
-                `INSERT INTO predictions (player_id, match_id, home_goals, away_goals, updated_at)
-                 VALUES (?, ?, ?, ?, unixepoch())
+                `INSERT INTO predictions (player_id, match_id, home_goals, away_goals, first_scorer, updated_at)
+                 VALUES (?, ?, ?, ?, ?, unixepoch())
                  ON CONFLICT(player_id, match_id) DO UPDATE SET
                      home_goals = excluded.home_goals,
                      away_goals = excluded.away_goals,
+                     first_scorer = excluded.first_scorer,
                      updated_at = unixepoch()`,
             )
-            .bind(input.playerId, input.matchId, input.score.home, input.score.away)
+            .bind(input.playerId, input.matchId, input.score.home, input.score.away, input.firstScorer ?? null)
             .run();
     },
 
     /** All predictions a player has made, across all matches. */
     async findByPlayer(db: D1Database, playerId: number): Promise<Prediction[]> {
         const { results } = await db
-            .prepare(
-                'SELECT player_id, match_id, home_goals, away_goals, updated_at FROM predictions WHERE player_id = ?',
-            )
+            .prepare(`SELECT ${SELECT_COLS} FROM predictions WHERE player_id = ?`)
             .bind(playerId)
             .all<Row>();
 
@@ -68,9 +75,7 @@ export const predictionsRepo = {
     /** All predictions for a given match, across all players in all games. */
     async findByMatch(db: D1Database, matchId: MatchId): Promise<Prediction[]> {
         const { results } = await db
-            .prepare(
-                'SELECT player_id, match_id, home_goals, away_goals, updated_at FROM predictions WHERE match_id = ?',
-            )
+            .prepare(`SELECT ${SELECT_COLS} FROM predictions WHERE match_id = ?`)
             .bind(matchId)
             .all<Row>();
 
@@ -81,7 +86,7 @@ export const predictionsRepo = {
     async findAllForGame(db: D1Database, gameId: number): Promise<Prediction[]> {
         const { results } = await db
             .prepare(
-                `SELECT p.player_id, p.match_id, p.home_goals, p.away_goals, p.updated_at
+                `SELECT ${SELECT_COLS.split(', ').map((c) => `p.${c}`).join(', ')}
                  FROM predictions p
                  JOIN players pl ON pl.id = p.player_id
                  WHERE pl.game_id = ?`,

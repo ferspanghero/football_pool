@@ -4,10 +4,15 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, type MePayload, type TournamentData } from '../api-client';
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
+import type { FirstScorer, MatchId, Score } from '@shared/types';
+
+/** Recorded results keyed by match id — the score and (if recorded) who scored first. */
+export type RecordedResults = Map<MatchId, { score: Score; firstScorer: FirstScorer | undefined }>;
 
 export type GameContextValue = {
     me: MePayload;
     tournament: TournamentData;
+    results: RecordedResults;
     refresh: () => Promise<void>;
 };
 
@@ -16,13 +21,19 @@ export function GameLayout() {
     const navigate = useNavigate();
     const [me, setMe] = useState<MePayload | undefined>();
     const [tournament, setTournament] = useState<TournamentData | undefined>();
+    const [results, setResults] = useState<RecordedResults>(new Map());
     const [error, setError] = useState<string | undefined>();
 
     const load = async () => {
         try {
-            const [meRes, tour] = await Promise.all([api.me(), api.tournament()]);
+            const [meRes, tour, res] = await Promise.all([api.me(), api.tournament(), api.results()]);
             setMe(meRes);
             setTournament(tour);
+            setResults(
+                new Map(
+                    res.results.map((r) => [r.matchId, { score: { home: r.home, away: r.away }, firstScorer: r.firstScorer ?? undefined }]),
+                ),
+            );
         } catch (err) {
             if (err instanceof ApiError && err.status === 401) {
                 navigate('/');
@@ -81,7 +92,7 @@ export function GameLayout() {
                 </div>
             </header>
             <main className="container">
-                <Outlet context={{ me, tournament, refresh: load }} />
+                <Outlet context={{ me, tournament, results, refresh: load }} />
             </main>
         </>
     );

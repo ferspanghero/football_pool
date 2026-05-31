@@ -54,6 +54,13 @@ export type Score = {
     away: number;
 };
 
+/**
+ * Which side scored the first goal of a match — the basis of the first-to-score bonus (BL6).
+ * `NONE` means the match ended 0-0 (no goal at all). Not derivable from the 90-minute score
+ * (a 2-1 could have started either way), so the admin records it alongside the result.
+ */
+export type FirstScorer = 'HOME' | 'AWAY' | 'NONE';
+
 export type Player = {
     id: number;
     displayName: string;
@@ -65,6 +72,8 @@ export type Prediction = {
     playerId: number;
     matchId: MatchId;
     score: Score;
+    /** Optional first-to-score pick (BL6). Undefined when the player hasn't made one. */
+    firstScorer?: FirstScorer | undefined;
 };
 
 /** One row of the per-game leaderboard, sorted by descending `totalPoints`. */
@@ -76,4 +85,7 @@ export type LeaderboardRow = {
     correctOutcomeCount: number;
     /** Predictions whose absolute goal difference matched the actual result. */
     correctGoalDiffCount: number;
+    /** Net first-to-score points (BL6): the sum of +/− bonuses, with boosted matches counted
+     * doubled so this reconciles with `totalPoints`. */
+    firstScorerPoints: number;
 };

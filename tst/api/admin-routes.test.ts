@@ -89,7 +89,23 @@ describe('GET /api/admin/results', () => {
 
         // Assert
         expect(res.status).toBe(200);
-        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1 });
+        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: null });
+    });
+
+    test('includes the recorded first scorer', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+        await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'AWAY' });
+
+        // Act
+        const res = await app.request('/api/admin/results', { headers: { Cookie: cookie } }, env);
+        const body = (await res.json()) as { results: Array<{ matchId: string; firstScorer: string | null }> };
+
+        // Assert
+        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: 'AWAY' });
     });
 
     test('returns 401 without admin session', async () => {
@@ -290,6 +306,109 @@ describe('PUT /api/admin/results/:matchId', () => {
 
         // Assert
         expect(res.status).toBe(400);
+    });
+
+    /** Record a result via the admin route. */
+    async function putResult(
+        app: ReturnType<typeof buildApp>,
+        env: AppEnv['Bindings'],
+        cookie: string,
+        body: Record<string, unknown>,
+    ): Promise<Response> {
+        return app.request(
+            `/api/admin/results/${firstMatch.id}`,
+            { method: 'PUT', headers: { 'Content-Type': 'application/json', Cookie: cookie }, body: JSON.stringify(body) },
+            env,
+        );
+    }
+
+    test('records the first scorer alongside the score', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await putResult(app, env, cookie, { homeGoals: 2, awayGoals: 1, firstScorer: 'HOME' });
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect((await resultsRepo.findById(db, firstMatch.id))?.firstScorer).toBe('HOME');
+    });
+
+    test('accepts NONE for a 0-0 result', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await putResult(app, env, cookie, { homeGoals: 0, awayGoals: 0, firstScorer: 'NONE' });
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect((await resultsRepo.findById(db, firstMatch.id))?.firstScorer).toBe('NONE');
+    });
+
+    test('rejects NONE for a non-0-0 result', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act, Assert
+        expect((await putResult(app, env, cookie, { homeGoals: 2, awayGoals: 1, firstScorer: 'NONE' })).status).toBe(400);
+    });
+
+    test('rejects a scoring side for a 0-0 result', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act, Assert
+        expect((await putResult(app, env, cookie, { homeGoals: 0, awayGoals: 0, firstScorer: 'HOME' })).status).toBe(400);
+    });
+
+    test('rejects an invalid first-scorer value', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act, Assert
+        expect((await putResult(app, env, cookie, { homeGoals: 2, awayGoals: 1, firstScorer: 'BOTH' })).status).toBe(400);
+    });
+
+    test('rejects a first scorer that did not score (one-sided result)', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act, Assert — away scored 0, so it cannot be the first scorer
+        expect((await putResult(app, env, cookie, { homeGoals: 2, awayGoals: 0, firstScorer: 'AWAY' })).status).toBe(400);
+    });
+
+    test('accepts the scoring side for a one-sided result', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await putResult(app, env, cookie, { homeGoals: 2, awayGoals: 0, firstScorer: 'HOME' });
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect((await resultsRepo.findById(db, firstMatch.id))?.firstScorer).toBe('HOME');
     });
 });
 

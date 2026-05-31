@@ -6,6 +6,7 @@ import { gamesRepo } from '@api/repos/games';
 import { hashPassword } from '@api/crypto';
 import { resultsRepo } from '@api/repos/results';
 import { predictionsRepo } from '@api/repos/predictions';
+import { boostsRepo } from '@api/repos/boosts';
 import { playersRepo } from '@api/repos/players';
 import { FIRST_KICKOFF_UTC, MATCHES } from '@data/tournament';
 import type { AppEnv } from '@api/types';
@@ -60,6 +61,41 @@ describe('GET /api/games/:id/leaderboard', () => {
         expect(body.rows.map((r) => r.displayName)).toEqual(['Alice', 'Bob']);
         expect(body.rows[0]!.totalPoints).toBe(7);
         expect(body.rows[1]!.totalPoints).toBe(3);
+    });
+
+    test('adds the first-to-score bonus to the leaderboard total', async () => {
+        // Arrange — wrong score (0 base) but a correct first-scorer pick; group ×1 → +2
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const alice = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
+        await predictionsRepo.upsert(db, { playerId: alice.id, matchId: firstMatch.id, score: { home: 0, away: 3 }, firstScorer: 'HOME' });
+        await resultsRepo.upsert(db, { matchId: firstMatch.id, score: { home: 2, away: 1 }, firstScorer: 'HOME' });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/leaderboard`, {}, env(db));
+        const body = (await res.json()) as { rows: Array<{ totalPoints: number }> };
+
+        // Assert
+        expect(body.rows[0]!.totalPoints).toBe(2);
+    });
+
+    test('doubles a boosted match in the leaderboard total', async () => {
+        // Arrange — exact group score (7) on a boosted match → 14
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const alice = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
+        await predictionsRepo.upsert(db, { playerId: alice.id, matchId: firstMatch.id, score: { home: 2, away: 1 } });
+        await resultsRepo.upsert(db, { matchId: firstMatch.id, score: { home: 2, away: 1 } });
+        await boostsRepo.set(db, { playerId: alice.id, phaseId: firstMatch.phase, matchId: firstMatch.id });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/leaderboard`, {}, env(db));
+        const body = (await res.json()) as { rows: Array<{ totalPoints: number }> };
+
+        // Assert
+        expect(body.rows[0]!.totalPoints).toBe(14);
     });
 
     test('returns empty rows when no players exist', async () => {

@@ -1,5 +1,14 @@
 import { describe, test, expect } from 'vitest';
-import { scoreMatch, scoreMatchWeighted, computeLeaderboard, determineChampion, CHAMPION_BONUS } from '@shared/scoring';
+import {
+    scoreMatch,
+    scoreMatchWeighted,
+    scoreFirstScorer,
+    scorePrediction,
+    FIRST_SCORER_BONUS,
+    computeLeaderboard,
+    determineChampion,
+    CHAMPION_BONUS,
+} from '@shared/scoring';
 import { PHASES, phaseById } from '@shared/phases';
 import type { PhaseId, Score } from '@shared/types';
 
@@ -75,6 +84,95 @@ describe('scoreMatchWeighted', () => {
         expect(phaseById('SF').multiplier).toBe(5);
         expect(phaseById('THIRD').multiplier).toBe(5);
         expect(phaseById('FINAL').multiplier).toBe(6);
+    });
+});
+
+describe('scoreFirstScorer', () => {
+    test('awards the base bonus for a correct pick in the group stage (×1)', () => {
+        // Arrange, Act, Assert
+        expect(scoreFirstScorer('HOME', 'HOME', 'GROUP_R1')).toBe(FIRST_SCORER_BONUS);
+    });
+
+    test('weights the bonus by the phase multiplier', () => {
+        // Arrange, Act, Assert — final ×6
+        expect(scoreFirstScorer('AWAY', 'AWAY', 'FINAL')).toBe(FIRST_SCORER_BONUS * 6);
+    });
+
+    test('awards the bonus for a correctly predicted goalless match', () => {
+        // Arrange, Act, Assert — NONE matches a 0-0
+        expect(scoreFirstScorer('NONE', 'NONE', 'GROUP_R1')).toBe(FIRST_SCORER_BONUS);
+    });
+
+    test.each(PHASES)('scales a correct pick by the $id multiplier', (phase) => {
+        // Arrange, Act, Assert
+        expect(scoreFirstScorer('HOME', 'HOME', phase.id)).toBe(FIRST_SCORER_BONUS * phase.multiplier);
+    });
+
+    test('penalizes a wrong pick by the phase-weighted base', () => {
+        // Arrange, Act, Assert — final ×6
+        expect(scoreFirstScorer('HOME', 'AWAY', 'FINAL')).toBe(-FIRST_SCORER_BONUS * 6);
+    });
+
+    test('penalizes a wrong pick in the group stage by the flat base', () => {
+        // Arrange, Act, Assert — group ×1
+        expect(scoreFirstScorer('HOME', 'AWAY', 'GROUP_R1')).toBe(-FIRST_SCORER_BONUS);
+    });
+
+    test('penalizes a side pick when the match is goalless (no-goal actual)', () => {
+        // Arrange, Act, Assert — a picked side never matches a 0-0, so it costs the base
+        expect(scoreFirstScorer('HOME', 'NONE', 'GROUP_R1')).toBe(-FIRST_SCORER_BONUS);
+    });
+
+    test('awards nothing when the player made no pick', () => {
+        // Arrange, Act, Assert
+        expect(scoreFirstScorer(undefined, 'HOME', 'GROUP_R1')).toBe(0);
+    });
+
+    test('awards nothing when no actual first scorer was recorded', () => {
+        // Arrange, Act, Assert
+        expect(scoreFirstScorer('HOME', undefined, 'GROUP_R1')).toBe(0);
+    });
+
+    test('FIRST_SCORER_BONUS is 2', () => {
+        // Arrange, Act, Assert
+        expect(FIRST_SCORER_BONUS).toBe(2);
+    });
+});
+
+describe('scorePrediction', () => {
+    const exact: Score = { home: 2, away: 1 };
+
+    test('returns weighted score with no first-scorer or boost', () => {
+        // Arrange, Act
+        const r = scorePrediction(exact, undefined, { home: 2, away: 1 }, undefined, 'GROUP_R1', false);
+
+        // Assert
+        expect(r).toEqual({ points: 7, firstScorerPoints: 0, base: 7 });
+    });
+
+    test('adds a correct first-scorer bonus', () => {
+        // Arrange, Act — exact (7) + first scorer correct (+2), group ×1
+        const r = scorePrediction(exact, 'HOME', { home: 2, away: 1 }, 'HOME', 'GROUP_R1', false);
+
+        // Assert
+        expect(r).toEqual({ points: 9, firstScorerPoints: 2, base: 7 });
+    });
+
+    test('subtracts a wrong first-scorer bonus', () => {
+        // Arrange, Act — wrong score (0) + wrong first scorer (−2), group ×1
+        const r = scorePrediction({ home: 0, away: 3 }, 'HOME', { home: 2, away: 1 }, 'AWAY', 'GROUP_R1', false);
+
+        // Assert
+        expect(r).toEqual({ points: -2, firstScorerPoints: -2, base: 0 });
+    });
+
+    test('doubles the whole contribution when boosted (first-scorer points included)', () => {
+        // Arrange, Act — (exact 7×6 final + first scorer 2×6) × 2 boost; the first-scorer component
+        // is reported doubled too, so it reconciles with the total.
+        const r = scorePrediction(exact, 'HOME', { home: 2, away: 1 }, 'HOME', 'FINAL', true);
+
+        // Assert
+        expect(r).toEqual({ points: (42 + 12) * 2, firstScorerPoints: 24, base: 7 });
     });
 });
 
@@ -234,6 +332,113 @@ describe('computeLeaderboard', () => {
     test('CHAMPION_BONUS is 100', () => {
         // Arrange, Act, Assert
         expect(CHAMPION_BONUS).toBe(100);
+    });
+
+    test('adds the first-to-score bonus when the pick matches the recorded actual', () => {
+        // Arrange — wrong score (0 base) but correct first scorer in the group stage (×1 → +2)
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [{ playerId: 1, matchId: 'G_A_1', score: { home: 0, away: 3 }, firstScorer: 'HOME' as const }];
+        const results = new Map([['G_A_1', { home: 2, away: 1 }]]);
+        const firstScorers = new Map([['G_A_1', 'HOME' as const]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined, firstScorers);
+
+        // Assert
+        expect(board[0]!.totalPoints).toBe(2);
+        expect(board[0]!.firstScorerPoints).toBe(2);
+    });
+
+    test('phase-weights the first-to-score bonus and stacks it on score points', () => {
+        // Arrange — exact final score (7×6=42) + correct first scorer (2×6=12)
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [{ playerId: 1, matchId: 'M104', score: { home: 2, away: 1 }, firstScorer: 'AWAY' as const }];
+        const results = new Map([['M104', { home: 2, away: 1 }]]);
+        const firstScorers = new Map([['M104', 'AWAY' as const]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined, firstScorers);
+
+        // Assert
+        expect(board[0]!.totalPoints).toBe(42 + 12);
+    });
+
+    test('penalizes a wrong first-scorer pick (−2 × phase) and reports it in firstScorerPoints', () => {
+        // Arrange — exact score (7) but wrong first scorer in the group stage (−2)
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [{ playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'AWAY' as const }];
+        const results = new Map([['G_A_1', { home: 2, away: 1 }]]);
+        const firstScorers = new Map([['G_A_1', 'HOME' as const]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined, firstScorers);
+
+        // Assert — 7 − 2
+        expect(board[0]!.totalPoints).toBe(5);
+        expect(board[0]!.firstScorerPoints).toBe(-2);
+    });
+
+    test('ignores first-scorer picks when no actuals are provided (default)', () => {
+        // Arrange — pick present, but the admin recorded no first scorer
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [{ playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'HOME' as const }];
+        const results = new Map([['G_A_1', { home: 2, away: 1 }]]);
+
+        // Act — no first-scorer-actuals argument
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined);
+
+        // Assert — only the exact-score points
+        expect(board[0]!.totalPoints).toBe(7);
+    });
+
+    test('doubles a boosted match (both score and first-scorer points)', () => {
+        // Arrange — group exact (7×1) + correct first scorer (2×1) = 9, boosted ×2 = 18
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [{ playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'HOME' as const }];
+        const results = new Map([['G_A_1', { home: 2, away: 1 }]]);
+        const firstScorers = new Map([['G_A_1', 'HOME' as const]]);
+        const boosts = new Map([[1, new Map<PhaseId, string>([['GROUP_R1', 'G_A_1']])]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined, firstScorers, boosts);
+
+        // Assert — total and the first-scorer column both reflect the boost
+        expect(board[0]!.totalPoints).toBe((7 + 2) * 2);
+        expect(board[0]!.firstScorerPoints).toBe(4);
+    });
+
+    test('boosts only the chosen match within a phase', () => {
+        // Arrange — two group exacts (7 each); only G_A_1 is boosted
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [
+            { playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 } },
+            { playerId: 1, matchId: 'G_B_1', score: { home: 2, away: 1 } },
+        ];
+        const results = new Map([
+            ['G_A_1', { home: 2, away: 1 }],
+            ['G_B_1', { home: 2, away: 1 }],
+        ]);
+        const boosts = new Map([[1, new Map<PhaseId, string>([['GROUP_R1', 'G_A_1']])]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined, new Map(), boosts);
+
+        // Assert — 14 (boosted) + 7
+        expect(board[0]!.totalPoints).toBe(21);
+    });
+
+    test('does not double the champion bonus', () => {
+        // Arrange — boosted exact final (42 → 84) plus a correct champion pick (+100, flat)
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: 'BRA' }];
+        const predictions = [{ playerId: 1, matchId: 'M104', score: { home: 2, away: 1 } }];
+        const results = new Map([['M104', { home: 2, away: 1 }]]);
+        const boosts = new Map([[1, new Map<PhaseId, string>([['FINAL', 'M104']])]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, 'BRA', new Map(), boosts);
+
+        // Assert
+        expect(board[0]!.totalPoints).toBe(84 + 100);
     });
 
     test('skips a prediction whose match is not in the match lookup', () => {

@@ -19,14 +19,27 @@ import { gamesRepo } from '@api/repos/games';
 import { playersRepo } from '@api/repos/players';
 import { resultsRepo } from '@api/repos/results';
 import { requireAdmin } from '@api/middleware';
-import { isValidGoal, MAX_GOALS, readJson } from '@api/http';
+import { isValidGoal, MAX_GOALS, parseFirstScorer, readJson } from '@api/http';
 import { MATCHES } from '@data/tournament';
 import type { AppEnv } from '@api/types';
+import type { FirstScorer } from '@shared/types';
 
 const ADMIN_COOKIE = 'admin_session';
 const ADMIN_COOKIE_MAX_AGE_SECONDS = 24 * 60 * 60; // 24 hours
 const MAX_GAME_NAME_LENGTH = 60;
 const MATCH_BY_ID = new Map(MATCHES.map((m) => [m.id, m]));
+
+/**
+ * Whether an admin-recorded first scorer is consistent with the score: NONE iff 0-0, the lone
+ * scorer for a one-sided result, or either side when both teams scored.
+ */
+function firstScorerMatchesScore(fs: FirstScorer, home: number, away: number): boolean {
+    if (home === 0 && away === 0) return fs === 'NONE';
+    if (away === 0) return fs === 'HOME';
+    if (home === 0) return fs === 'AWAY';
+
+    return fs === 'HOME' || fs === 'AWAY';
+}
 
 export const adminRoutes = new Hono<AppEnv>();
 
@@ -59,7 +72,14 @@ adminRoutes.get('/admin/whoami', requireAdmin, (c) => c.json({ admin: true }));
 adminRoutes.get('/admin/results', requireAdmin, async (c) => {
     const results = await resultsRepo.findAll(c.env.DB);
 
-    return c.json({ results: results.map((r) => ({ matchId: r.matchId, home: r.score.home, away: r.score.away })) });
+    return c.json({
+        results: results.map((r) => ({
+            matchId: r.matchId,
+            home: r.score.home,
+            away: r.score.away,
+            firstScorer: r.firstScorer ?? null,
+        })),
+    });
 });
 
 adminRoutes.post('/admin/games', requireAdmin, async (c) => {
@@ -85,16 +105,29 @@ adminRoutes.put('/admin/results/:matchId', requireAdmin, async (c) => {
     if (!MATCH_BY_ID.has(matchId)) {
         return c.json({ error: { code: 'NOT_FOUND', message: 'match not found' } }, 404);
     }
-    const body = await readJson<{ homeGoals?: unknown; awayGoals?: unknown }>(c.req.raw);
+    const body = await readJson<{ homeGoals?: unknown; awayGoals?: unknown; firstScorer?: unknown }>(c.req.raw);
     if (!isValidGoal(body?.homeGoals) || !isValidGoal(body?.awayGoals)) {
         return c.json(
             { error: { code: 'VALIDATION', message: `homeGoals/awayGoals must be integers in [0, ${MAX_GOALS}]` } },
             400,
         );
     }
+    const firstScorer = parseFirstScorer(body?.firstScorer);
+    if (firstScorer === 'INVALID') {
+        return c.json({ error: { code: 'VALIDATION', message: 'firstScorer must be HOME, AWAY, or NONE' } }, 400);
+    }
+    // The recorded first scorer must agree with the score: NONE for a 0-0; the lone scorer for a
+    // one-sided result; either side when both scored.
+    if (firstScorer !== undefined && !firstScorerMatchesScore(firstScorer, body.homeGoals, body.awayGoals)) {
+        return c.json(
+            { error: { code: 'VALIDATION', message: 'firstScorer must match the recorded score' } },
+            400,
+        );
+    }
     await resultsRepo.upsert(c.env.DB, {
         matchId,
         score: { home: body.homeGoals, away: body.awayGoals },
+        firstScorer,
     });
 
     return c.json({ ok: true });

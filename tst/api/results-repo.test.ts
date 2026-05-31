@@ -57,4 +57,41 @@ describe('resultsRepo', () => {
         // Arrange, Act, Assert
         await expect(resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: -1, away: 0 } })).rejects.toThrow();
     });
+
+    test('upsert persists the recorded first scorer', async () => {
+        // Arrange, Act
+        await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'AWAY' });
+        const found = await resultsRepo.findById(db, 'G_A_1');
+
+        // Assert
+        expect(found?.firstScorer).toBe('AWAY');
+    });
+
+    test('upsert leaves first scorer undefined when none is given', async () => {
+        // Arrange, Act
+        await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 2, away: 1 } });
+        const found = await resultsRepo.findById(db, 'G_A_1');
+
+        // Assert
+        expect(found?.firstScorer).toBeUndefined();
+    });
+
+    test('upsert overwrites the recorded first scorer', async () => {
+        // Arrange
+        await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 1, away: 0 }, firstScorer: 'HOME' });
+
+        // Act
+        await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 0, away: 0 }, firstScorer: 'NONE' });
+        const found = await resultsRepo.findById(db, 'G_A_1');
+
+        // Assert
+        expect(found?.firstScorer).toBe('NONE');
+    });
+
+    test('rejects an invalid first-scorer value at the DB level', async () => {
+        // Arrange, Act, Assert
+        await expect(
+            resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 1, away: 0 }, firstScorer: 'BOTH' as never }),
+        ).rejects.toThrow();
+    });
 });

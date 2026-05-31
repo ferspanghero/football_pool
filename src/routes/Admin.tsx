@@ -7,6 +7,7 @@ import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import { TeamSide } from '../components/Flag';
 import { matchSides, type MatchSide } from '../lib/matchDisplay';
+import type { FirstScorer } from '@shared/types';
 
 type AdminTab = 'games' | 'results' | 'players';
 
@@ -264,19 +265,27 @@ function AdminResults() {
     const [selectedPhase, setSelectedPhase] = useState<string>('GROUP_R1');
     // Recorded scores as strings so an unrecorded match shows empty (not 0-0); seeded from saved
     // results and updated on save so a saved value survives switching phases away and back.
-    const [scores, setScores] = useState<Map<string, { home: string; away: string }>>(new Map());
+    type RecordedResult = { home: string; away: string; firstScorer: FirstScorer | null };
+    const [scores, setScores] = useState<Map<string, RecordedResult>>(new Map());
 
     useEffect(() => {
         Promise.all([api.tournament(), api.adminListResults()])
             .then(([t, r]) => {
                 setTournament(t);
-                setScores(new Map(r.results.map((res) => [res.matchId, { home: String(res.home), away: String(res.away) }])));
+                setScores(
+                    new Map(
+                        r.results.map((res) => [
+                            res.matchId,
+                            { home: String(res.home), away: String(res.away), firstScorer: res.firstScorer },
+                        ]),
+                    ),
+                );
             })
             .catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
     }, []);
 
-    const onRowSaved = (matchId: string, score: { home: string; away: string }) => {
-        setScores((prev) => new Map(prev).set(matchId, score));
+    const onRowSaved = (matchId: string, result: RecordedResult) => {
+        setScores((prev) => new Map(prev).set(matchId, result));
     };
 
     const teams = tournament?.teams ?? [];
@@ -317,14 +326,29 @@ function ResultRow({
 }: {
     matchId: string;
     sides: { home: MatchSide; away: MatchSide };
-    initial: { home: string; away: string } | undefined;
-    onSaved: (matchId: string, score: { home: string; away: string }) => void;
+    initial: { home: string; away: string; firstScorer: FirstScorer | null } | undefined;
+    onSaved: (matchId: string, result: { home: string; away: string; firstScorer: FirstScorer | null }) => void;
 }) {
     const { showToast } = useToast();
     const [home, setHome] = useState(initial?.home ?? '');
     const [away, setAway] = useState(initial?.away ?? '');
+    const [scorer, setScorer] = useState<FirstScorer | ''>(initial?.firstScorer ?? '');
     const [saved, setSaved] = useState(initial !== undefined);
     const [saving, setSaving] = useState(false);
+
+    // The first scorer is determined by the score except when both teams scored: a 0-0 is "no
+    // goal", a one-sided result auto-picks the lone scorer (both locked), and only a both-scored
+    // result lets the admin choose. `selectedScorer` is what's shown and saved.
+    const bothFilled = home !== '' && away !== '';
+    const h = Number(home);
+    const a = Number(away);
+    const goalless = bothFilled && h === 0 && a === 0;
+    const onlyHome = bothFilled && h > 0 && a === 0;
+    const onlyAway = bothFilled && h === 0 && a > 0;
+    const bothScored = bothFilled && h > 0 && a > 0;
+    const forcedScorer: FirstScorer | undefined = goalless ? 'NONE' : onlyHome ? 'HOME' : onlyAway ? 'AWAY' : undefined;
+    const selectedScorer: FirstScorer | '' =
+        forcedScorer ?? (bothScored && (scorer === 'HOME' || scorer === 'AWAY') ? scorer : '');
 
     const onSave = async () => {
         if (home === '' || away === '') {
@@ -334,9 +358,10 @@ function ResultRow({
         }
         setSaving(true);
         try {
-            await api.adminSetResult(matchId, { home: Number(home), away: Number(away) });
+            const firstScorer = selectedScorer || undefined;
+            await api.adminSetResult(matchId, { home: h, away: a }, firstScorer);
             setSaved(true);
-            onSaved(matchId, { home, away });
+            onSaved(matchId, { home, away, firstScorer: firstScorer ?? null });
             showToast('success', `Saved ${matchId}`);
         } catch (err) {
             showToast('error', err instanceof ApiError ? err.message : 'Failed to save');
@@ -350,7 +375,7 @@ function ResultRow({
         setSaved(false);
     };
 
-    const onRowBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const onRowBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
         if ((e.relatedTarget as HTMLElement | null)?.getAttribute('data-match') === matchId) return;
         if (home === '' && away === '') return;
         if (saved) return;
@@ -366,6 +391,35 @@ function ResultRow({
             <input type="number" data-match={matchId} inputMode="numeric" min={0} max={20} value={home} onChange={onChange(setHome)} onBlur={onRowBlur} />
             <span>-</span>
             <input type="number" data-match={matchId} inputMode="numeric" min={0} max={20} value={away} onChange={onChange(setAway)} onBlur={onRowBlur} />
+            <select
+                aria-label="First to score"
+                title={bothScored ? 'Pick who scored first' : 'Set automatically from the score'}
+                data-match={matchId}
+                value={selectedScorer}
+                disabled={!bothScored}
+                style={{ width: '8.5rem', flex: 'none' }}
+                onChange={(e) => {
+                    setScorer(e.target.value as FirstScorer | '');
+                    setSaved(false);
+                }}
+                onBlur={onRowBlur}
+            >
+                {goalless ? (
+                    <option value="NONE">No goal</option>
+                ) : onlyHome ? (
+                    <option value="HOME">{sides.home.name}</option>
+                ) : onlyAway ? (
+                    <option value="AWAY">{sides.away.name}</option>
+                ) : bothScored ? (
+                    <>
+                        <option value="">1st: —</option>
+                        <option value="HOME">{sides.home.name}</option>
+                        <option value="AWAY">{sides.away.name}</option>
+                    </>
+                ) : (
+                    <option value="">1st: —</option>
+                )}
+            </select>
             {/* Fixed width so "Save"/"Saving…"/"Saved ✓" can't reflow the score inputs' position. */}
             <button type="button" data-match={matchId} tabIndex={-1} onClick={onSave} disabled={saving} style={{ width: '6rem', flex: 'none' }}>
                 {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}

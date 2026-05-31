@@ -155,6 +155,66 @@ describe('PUT /api/me/predictions/:matchId', () => {
         expect(res.status).toBe(400);
     });
 
+    test('saves a first-scorer pick alongside the score', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+
+        // Act
+        const res = await app.request(
+            `/api/me/predictions/${futureMatch.id}`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Cookie: cookie },
+                body: JSON.stringify({ homeGoals: 2, awayGoals: 1, firstScorer: 'HOME' }),
+            },
+            env(db),
+        );
+
+        // Assert
+        expect(res.status).toBe(200);
+        const me = await app.request('/api/me', { headers: { Cookie: cookie } }, env(db));
+        const body = (await me.json()) as { predictions: Array<{ firstScorer?: string }> };
+        expect(body.predictions[0]!.firstScorer).toBe('HOME');
+    });
+
+    test('rejects with 400 for an invalid first-scorer value', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+
+        // Act
+        const res = await app.request(
+            `/api/me/predictions/${futureMatch.id}`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Cookie: cookie },
+                body: JSON.stringify({ homeGoals: 2, awayGoals: 1, firstScorer: 'BOTH' }),
+            },
+            env(db),
+        );
+
+        // Assert
+        expect(res.status).toBe(400);
+    });
+
+    test('rejects a NONE first-scorer pick — players pick a side or none', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+
+        // Act
+        const res = await app.request(
+            `/api/me/predictions/${futureMatch.id}`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Cookie: cookie },
+                body: JSON.stringify({ homeGoals: 0, awayGoals: 0, firstScorer: 'NONE' }),
+            },
+            env(db),
+        );
+
+        // Assert
+        expect(res.status).toBe(400);
+    });
+
     test('rejects with 401 without a session', async () => {
         // Arrange
         const db = createTestDb();
@@ -172,6 +232,104 @@ describe('PUT /api/me/predictions/:matchId', () => {
         );
 
         // Assert
+        expect(res.status).toBe(401);
+    });
+});
+
+describe('PUT /api/me/boosts/:phaseId', () => {
+    const ct = { 'Content-Type': 'application/json' };
+
+    test('saves a boost and /me returns it', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+
+        // Act
+        const res = await app.request(
+            '/api/me/boosts/GROUP_R1',
+            { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify({ matchId: 'G_A_1' }) },
+            env(db),
+        );
+
+        // Assert
+        expect(res.status).toBe(200);
+        const me = await app.request('/api/me', { headers: { Cookie: cookie } }, env(db));
+        const body = (await me.json()) as { boosts: Array<{ phaseId: string; matchId: string }> };
+        expect(body.boosts).toEqual([{ phaseId: 'GROUP_R1', matchId: 'G_A_1' }]);
+    });
+
+    test('clears a boost when matchId is null', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+        await app.request(
+            '/api/me/boosts/GROUP_R1',
+            { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify({ matchId: 'G_A_1' }) },
+            env(db),
+        );
+
+        // Act
+        const res = await app.request(
+            '/api/me/boosts/GROUP_R1',
+            { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify({ matchId: null }) },
+            env(db),
+        );
+
+        // Assert
+        expect(res.status).toBe(200);
+        const me = await app.request('/api/me', { headers: { Cookie: cookie } }, env(db));
+        expect(((await me.json()) as { boosts: unknown[] }).boosts).toEqual([]);
+    });
+
+    test('rejects an unknown phase with 404', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+
+        // Act, Assert
+        const res = await app.request(
+            '/api/me/boosts/NOPE',
+            { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify({ matchId: 'G_A_1' }) },
+            env(db),
+        );
+        expect(res.status).toBe(404);
+    });
+
+    test('rejects a match that is not in the phase with 400', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+
+        // Act, Assert — M73 is an R32 match, not GROUP_R1
+        const res = await app.request(
+            '/api/me/boosts/GROUP_R1',
+            { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify({ matchId: 'M73' }) },
+            env(db),
+        );
+        expect(res.status).toBe(400);
+    });
+
+    test('rejects with 403 once the phase first kickoff has passed', async () => {
+        // Arrange
+        const { db, app, cookie, setNow } = await loginAlice();
+        setNow(Date.parse(FIRST_KICKOFF_UTC) + 1);
+
+        // Act, Assert
+        const res = await app.request(
+            '/api/me/boosts/GROUP_R1',
+            { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify({ matchId: 'G_A_1' }) },
+            env(db),
+        );
+        expect(res.status).toBe(403);
+    });
+
+    test('rejects with 401 without a session', async () => {
+        // Arrange
+        const db = createTestDb();
+        const { app } = buildContext();
+
+        // Act, Assert
+        const res = await app.request(
+            '/api/me/boosts/GROUP_R1',
+            { method: 'PUT', headers: ct, body: JSON.stringify({ matchId: 'G_A_1' }) },
+            env(db),
+        );
         expect(res.status).toBe(401);
     });
 });

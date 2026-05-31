@@ -1,17 +1,17 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const migrationPath = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '../../migrations/0001_init.sql',
-);
+const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../migrations');
 
 export function createTestDb(): D1Database {
     const sqlite = new Database(':memory:');
     sqlite.pragma('foreign_keys = ON');
-    sqlite.exec(readFileSync(migrationPath, 'utf8'));
+    // Apply every migration in lexical (= chronological) order, mirroring `wrangler d1 migrations`.
+    for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort()) {
+        sqlite.exec(readFileSync(path.join(migrationsDir, file), 'utf8'));
+    }
 
     return shimD1(sqlite);
 }

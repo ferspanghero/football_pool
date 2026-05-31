@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { createTestDb } from './testdb';
 import { buildApp } from '@api/app';
 import { gamesRepo } from '@api/repos/games';
+import { resultsRepo } from '@api/repos/results';
 import type { AppEnv } from '@api/types';
 
 const SECRET = 'test-secret-32-chars-12345678901234';
@@ -43,6 +44,33 @@ describe('GET /api/games', () => {
             expect(g).not.toHaveProperty('passwordHash');
             expect(g).not.toHaveProperty('password_hash');
         }
+    });
+});
+
+describe('GET /api/results', () => {
+    test('returns recorded results with the first scorer', async () => {
+        // Arrange
+        const db = createTestDb();
+        await resultsRepo.upsert(db, { matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'HOME' });
+        const app = buildApp();
+
+        // Act
+        const res = await app.request('/api/results', {}, env(db));
+        const body = (await res.json()) as { results: Array<{ matchId: string; home: number; away: number; firstScorer: string | null }> };
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: 'HOME' });
+    });
+
+    test('returns an empty list when no results are recorded', async () => {
+        // Arrange
+        const db = createTestDb();
+        const app = buildApp();
+
+        // Act, Assert
+        const res = await app.request('/api/results', {}, env(db));
+        expect(await res.json()).toEqual({ results: [] });
     });
 });
 

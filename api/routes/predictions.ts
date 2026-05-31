@@ -10,14 +10,17 @@
 import { Hono } from 'hono';
 import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
+import { boostsRepo } from '@api/repos/boosts';
 import { requirePlayer } from '@api/middleware';
-import { isValidGoal, MAX_GOALS, readJson } from '@api/http';
-import { hasResolvedTeams } from '@shared/phases';
+import { isValidGoal, MAX_GOALS, parseFirstScorer, readJson } from '@api/http';
+import { hasResolvedTeams, phaseFirstKickoffUtc, PHASES } from '@shared/phases';
 import { MATCHES, FIRST_KICKOFF_UTC, TEAMS } from '@data/tournament';
 import type { AppEnv } from '@api/types';
+import type { PhaseId } from '@shared/types';
 
 const MATCH_BY_ID = new Map(MATCHES.map((m) => [m.id, m]));
 const VALID_TEAM_IDS = new Set(TEAMS.map((t) => t.id));
+const VALID_PHASE_IDS = new Set<string>(PHASES.map((p) => p.id));
 
 export const predictionRoutes = new Hono<AppEnv>();
 
@@ -31,19 +34,53 @@ predictionRoutes.put('/me/predictions/:matchId', requirePlayer, async (c) => {
     if (c.var.clock() >= Date.parse(match.kickoffUtc)) {
         return c.json({ error: { code: 'FORBIDDEN', message: 'prediction locked at kickoff' } }, 403);
     }
-    const body = await readJson<{ homeGoals?: unknown; awayGoals?: unknown }>(c.req.raw);
+    const body = await readJson<{ homeGoals?: unknown; awayGoals?: unknown; firstScorer?: unknown }>(c.req.raw);
     if (!isValidGoal(body?.homeGoals) || !isValidGoal(body?.awayGoals)) {
         return c.json(
             { error: { code: 'VALIDATION', message: `homeGoals/awayGoals must be integers in [0, ${MAX_GOALS}]` } },
             400,
         );
     }
+    // Players pick a side or nothing — they can't bet on a goalless draw (NONE is admin-only,
+    // recorded as the actual to penalize a side pick on a 0-0).
+    const firstScorer = parseFirstScorer(body?.firstScorer);
+    if (firstScorer === 'INVALID' || firstScorer === 'NONE') {
+        return c.json({ error: { code: 'VALIDATION', message: 'firstScorer must be HOME or AWAY' } }, 400);
+    }
     const playerId = c.var.playerId!;
     await predictionsRepo.upsert(c.env.DB, {
         playerId,
         matchId,
         score: { home: body.homeGoals, away: body.awayGoals },
+        firstScorer,
     });
+
+    return c.json({ ok: true });
+});
+
+predictionRoutes.put('/me/boosts/:phaseId', requirePlayer, async (c) => {
+    const phaseId = c.req.param('phaseId');
+    if (!VALID_PHASE_IDS.has(phaseId)) {
+        return c.json({ error: { code: 'NOT_FOUND', message: 'unknown phase' } }, 404);
+    }
+    // The boost for a phase is committed once that phase's first match kicks off.
+    const firstKickoff = phaseFirstKickoffUtc(MATCHES, phaseId as PhaseId);
+    if (firstKickoff !== undefined && c.var.clock() >= Date.parse(firstKickoff)) {
+        return c.json({ error: { code: 'FORBIDDEN', message: 'boost locked at phase first kickoff' } }, 403);
+    }
+    const body = await readJson<{ matchId?: unknown }>(c.req.raw);
+    const playerId = c.var.playerId!;
+    // A null/absent matchId clears the phase's boost.
+    if (body?.matchId === null || body?.matchId === undefined) {
+        await boostsRepo.clear(c.env.DB, playerId, phaseId as PhaseId);
+
+        return c.json({ ok: true });
+    }
+    const match = typeof body.matchId === 'string' ? MATCH_BY_ID.get(body.matchId) : undefined;
+    if (!match || match.phase !== phaseId) {
+        return c.json({ error: { code: 'VALIDATION', message: 'match does not belong to this phase' } }, 400);
+    }
+    await boostsRepo.set(c.env.DB, { playerId, phaseId: phaseId as PhaseId, matchId: match.id });
 
     return c.json({ ok: true });
 });
