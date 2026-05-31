@@ -6,6 +6,7 @@ import { api, ApiError, type GameSummary, type TournamentData } from '../api-cli
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import { TeamSide } from '../components/Flag';
+import { SaveButton } from '../components/SaveButton';
 import { matchSides, type MatchSide } from '../lib/matchDisplay';
 import type { FirstScorer } from '@shared/types';
 
@@ -421,9 +422,7 @@ function ResultRow({
                 )}
             </select>
             {/* Fixed width so "Save"/"Saving…"/"Saved ✓" can't reflow the score inputs' position. */}
-            <button type="button" data-match={matchId} tabIndex={-1} onClick={onSave} disabled={saving} style={{ width: '6rem', flex: 'none' }}>
-                {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
-            </button>
+            <SaveButton saving={saving} saved={saved} data-match={matchId} tabIndex={-1} onClick={onSave} style={{ width: '6rem', flex: 'none' }} />
         </li>
     );
 }

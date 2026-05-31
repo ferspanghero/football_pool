@@ -13,6 +13,7 @@ import { formatKickoffDate, formatKickoffTime } from '@shared/time';
 import { flagEmoji } from '@data/flags';
 import { matchSides, type MatchSide } from '../lib/matchDisplay';
 import { TeamSide } from '../components/Flag';
+import { SaveButton } from '../components/SaveButton';
 import type { GameContextValue } from './GameLayout';
 import type { FirstScorer, Match, MatchId, PhaseId, Score } from '@shared/types';
 
@@ -322,9 +323,13 @@ function OpenRow({ matchId, prefix, home, away, pick, firstScorer, time, onSaved
                 </span>
                 <FirstScorerToggle side="HOME" matchId={matchId} label={home.name} active={scorer === 'HOME'} onToggle={toggleScorer} onBlur={onRowBlur} />
             </span>
-            <input className="pick-input home" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} onBlur={onRowBlur} />
+            <span className="pick-num home">
+                <input className="pick-input home" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} onBlur={onRowBlur} />
+            </span>
             <span className="pick-dash">-</span>
-            <input className="pick-input away" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} onBlur={onRowBlur} />
+            <span className="pick-num away">
+                <input className="pick-input away" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} onBlur={onRowBlur} />
+            </span>
             <span className="pick-team away">
                 <FirstScorerToggle side="AWAY" matchId={matchId} label={away.name} active={scorer === 'AWAY'} onToggle={toggleScorer} onBlur={onRowBlur} />
                 <span className="team-label">
@@ -332,9 +337,7 @@ function OpenRow({ matchId, prefix, home, away, pick, firstScorer, time, onSaved
                 </span>
             </span>
             <span className="pick-action">
-                <button type="button" data-match={matchId} tabIndex={-1} onClick={onSave} disabled={saving}>
-                    {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
-                </button>
+                <SaveButton saving={saving} saved={saved} data-match={matchId} tabIndex={-1} onClick={onSave} />
             </span>
             <time className="pick-time">{time}</time>
             {error && <div className="pick-error">{error}</div>}
@@ -408,14 +411,20 @@ function BoostControl({
 function ChampionBanner({ locked }: { locked: boolean }) {
     const ctx = useOutletContext<GameContextValue>();
     const [teamId, setTeamId] = useState<string>(ctx.me.championTeamId ?? '');
+    const [saved, setSaved] = useState(ctx.me.championTeamId != null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | undefined>();
+    const teams = useMemo(
+        () => [...ctx.tournament.teams].sort((a, b) => a.name.localeCompare(b.name)),
+        [ctx.tournament.teams],
+    );
 
     const onSave = async () => {
         setSaving(true);
         setError(undefined);
         try {
             await api.saveChampion(teamId);
+            setSaved(true);
             await ctx.refresh();
         } catch (err) {
             setError(saveErrorMessage(err, 'Champion picks have locked (first kickoff passed). Refresh the page.'));
@@ -431,17 +440,21 @@ function ChampionBanner({ locked }: { locked: boolean }) {
                 <span>{ctx.me.championTeamId ?? 'no pick'} (locked)</span>
             ) : (
                 <>
-                    <select value={teamId} onChange={(e) => setTeamId(e.target.value)}>
+                    <select
+                        value={teamId}
+                        onChange={(e) => {
+                            setTeamId(e.target.value);
+                            setSaved(false);
+                        }}
+                    >
                         <option value="">— pick one —</option>
-                        {ctx.tournament.teams.map((t) => (
+                        {teams.map((t) => (
                             <option key={t.id} value={t.id}>
                                 {flagEmoji(t.id)} {t.name}
                             </option>
                         ))}
                     </select>{' '}
-                    <button type="button" onClick={onSave} disabled={saving || !teamId}>
-                        {saving ? 'Saving…' : 'Save'}
-                    </button>
+                    <SaveButton saving={saving} saved={saved} disabled={!teamId} onClick={onSave} />
                 </>
             )}
             {error && <div className="error">{error}</div>}
