@@ -27,6 +27,25 @@ export function MyPicks() {
     const championLocked = now >= Date.parse(ctx.tournament.firstKickoffUtc);
     const group = phaseGroups[phaseIdx];
 
+    // Pick the row variant for a match: TBD (unresolved knockout) → read-only locked (kickoff
+    // passed) → editable open. Each is wrapped in a `.pick-row` by the caller.
+    const renderRow = (m: Match) => {
+        const sides = matchSides(m, ctx.tournament.teams);
+        const prefix = isGroupMatch(m) ? `Group ${m.group}` : '';
+        const time = formatKickoffTime(m.kickoffUtc);
+        const pick = predictionByMatch.get(m.id);
+
+        if (!hasResolvedTeams(m, ctx.tournament.teams)) {
+            return <LockedRow prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} tbd />;
+        }
+
+        if (Date.parse(m.kickoffUtc) <= now) {
+            return <LockedRow prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} />;
+        }
+
+        return <OpenRow matchId={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} onSaved={ctx.refresh} />;
+    };
+
     return (
         <>
             <ChampionBanner locked={championLocked} />
@@ -58,23 +77,14 @@ export function MyPicks() {
                     <section key={date} className="day-card">
                         <h3>{date}</h3>
                         <div className="picks-grid">
-                            {matches.map((m) => {
-                                const sides = matchSides(m, ctx.tournament.teams);
-                                const prefix = isGroupMatch(m) ? `Group ${m.group}` : '';
-                                const time = formatKickoffTime(m.kickoffUtc);
-                                const pick = predictionByMatch.get(m.id);
-
-                                // A knockout whose teams aren't decided yet can't be predicted.
-                                if (!hasResolvedTeams(m, ctx.tournament.teams)) {
-                                    return <LockedRow key={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} tbd />;
-                                }
-
-                                return Date.parse(m.kickoffUtc) <= now ? (
-                                    <LockedRow key={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} />
-                                ) : (
-                                    <OpenRow key={m.id} matchId={m.id} prefix={prefix} home={sides.home} away={sides.away} pick={pick} time={time} onSaved={ctx.refresh} />
-                                );
-                            })}
+                            {/* Each match is wrapped so it stays one row of the shared grid on
+                                desktop (`.pick-row { display: contents }`) yet reflows into a
+                                self-contained card on mobile. */}
+                            {matches.map((m) => (
+                                <div key={m.id} className="pick-row">
+                                    {renderRow(m)}
+                                </div>
+                            ))}
                         </div>
                     </section>
                 ))}
@@ -116,9 +126,9 @@ function LockedRow({ prefix, home, away, pick, time, tbd }: RowProps & { tbd?: b
             <span className="pick-team home">
                 <TeamSide side={home} />
             </span>
-            <input className="pick-input" type="number" value={pick ? String(pick.home) : ''} disabled readOnly />
+            <input className="pick-input home" type="number" value={pick ? String(pick.home) : ''} disabled readOnly />
             <span className="pick-dash">-</span>
-            <input className="pick-input" type="number" value={pick ? String(pick.away) : ''} disabled readOnly />
+            <input className="pick-input away" type="number" value={pick ? String(pick.away) : ''} disabled readOnly />
             <span className="pick-team away">
                 <TeamSide side={away} />
             </span>
@@ -181,9 +191,9 @@ function OpenRow({ matchId, prefix, home, away, pick, time, onSaved }: RowProps 
             <span className="pick-team home">
                 <TeamSide side={home} />
             </span>
-            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} onBlur={onRowBlur} />
+            <input className="pick-input home" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} onBlur={onRowBlur} />
             <span className="pick-dash">-</span>
-            <input className="pick-input" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} onBlur={onRowBlur} />
+            <input className="pick-input away" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} onBlur={onRowBlur} />
             <span className="pick-team away">
                 <TeamSide side={away} />
             </span>

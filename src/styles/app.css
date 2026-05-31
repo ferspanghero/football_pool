@@ -255,7 +255,67 @@ form.stack label { display: flex; flex-direction: column; gap: 0.25rem; font-siz
 .pick-time { font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
 .pick-error { grid-column: 1 / -1; color: var(--bad); font-size: 0.85rem; }
 
+/* Each match wraps in a .pick-row. On desktop the wrapper is transparent, so its children
+   participate in `.picks-grid` exactly as bare siblings would; mobile (below) overrides this. */
+.pick-row { display: contents; }
+
 @media (max-width: 640px) {
     .groups-grid { grid-template-columns: 1fr; }
     nav.tabs { width: 100%; }
+
+    /* My picks — each match reflows from one row of the shared grid into a self-contained card. */
+    .picks-grid { display: block; }
+    .pick-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        column-gap: 0.6rem;
+        row-gap: 0.45rem;
+        align-items: center;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 0.6rem 0.8rem;
+        margin-bottom: 0.6rem;
+    }
+    .pick-row .pick-prefix { grid-area: 1 / 1; }
+    .pick-row .pick-status { grid-area: 1 / 2; justify-self: end; }
+    .pick-row .pick-team.home { grid-area: 2 / 1; text-align: left; }
+    .pick-row .pick-input.home { grid-area: 2 / 2; }
+    .pick-row .pick-team.away { grid-area: 3 / 1; text-align: left; }
+    .pick-row .pick-input.away { grid-area: 3 / 2; }
+    .pick-row .pick-dash { display: none; }
+    .pick-row .pick-time { grid-area: 4 / 1; }
+    .pick-row .pick-action { grid-area: 4 / 2; justify-self: end; }
+    .pick-row .pick-error { grid-column: 1 / -1; }
+
+    /* Comfortable tap targets (numeric inputmode is already set on the editable inputs).
+       Fixed-width Save button so "Save"/"Saving…"/"Saved ✓" don't resize the row after saving. */
+    .pick-row .pick-input { width: 100%; min-height: 44px; }
+    .pick-row .pick-action button { width: 6rem; min-height: 44px; }
+
+    /* Leaderboard / match-detail tables → stacked labeled cards (one row per card). */
+    .leaderboard-table thead { display: none; }
+    .leaderboard-table,
+    .leaderboard-table tbody,
+    .leaderboard-table tr,
+    .leaderboard-table td { display: block; }
+    .leaderboard-table tr {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        margin-bottom: 0.6rem;
+        padding: 0.3rem 0.7rem;
+        background: white;
+    }
+    .leaderboard-table td {
+        display: flex;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.25rem 0;
+        border-bottom: none;
+    }
+    .leaderboard-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--muted);
+    }
 }

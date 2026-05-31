@@ -57,12 +57,12 @@ export function Leaderboard() {
                 <tbody>
                     {rows.map((r, i) => (
                         <tr key={r.playerId}>
-                            <td>{i + 1}</td>
-                            <td>{r.displayName}</td>
-                            <td>{r.totalPoints}</td>
-                            <td>{r.exactScoreCount}</td>
-                            <td>{r.correctOutcomeCount}</td>
-                            <td>{r.correctGoalDiffCount}</td>
+                            <td data-label="Rank">{i + 1}</td>
+                            <td data-label="Player">{r.displayName}</td>
+                            <td data-label="Points">{r.totalPoints}</td>
+                            <td data-label="Exact Predictions">{r.exactScoreCount}</td>
+                            <td data-label="Right Outcome">{r.correctOutcomeCount}</td>
+                            <td data-label="Right Goal Diff">{r.correctGoalDiffCount}</td>
                         </tr>
                     ))}
                 </tbody>

@@ -63,11 +63,11 @@ export function MatchDetail() {
                 <tbody>
                     {data?.predictions.map((p) => (
                         <tr key={p.playerId}>
-                            <td>{p.displayName}</td>
-                            <td>
+                            <td data-label="Player">{p.displayName}</td>
+                            <td data-label="Prediction">
                                 {p.score.home} - {p.score.away}
                             </td>
-                            <td>
+                            <td data-label="Outcome">
                                 <OutcomeBadge prediction={p.score} result={data?.result ?? null} />
                             </td>
                         </tr>

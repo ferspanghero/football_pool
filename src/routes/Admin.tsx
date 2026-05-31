@@ -366,7 +366,8 @@ function ResultRow({
             <input type="number" data-match={matchId} inputMode="numeric" min={0} max={20} value={home} onChange={onChange(setHome)} onBlur={onRowBlur} />
             <span>-</span>
             <input type="number" data-match={matchId} inputMode="numeric" min={0} max={20} value={away} onChange={onChange(setAway)} onBlur={onRowBlur} />
-            <button type="button" data-match={matchId} tabIndex={-1} onClick={onSave} disabled={saving}>
+            {/* Fixed width so "Save"/"Saving…"/"Saved ✓" can't reflow the score inputs' position. */}
+            <button type="button" data-match={matchId} tabIndex={-1} onClick={onSave} disabled={saving} style={{ width: '6rem', flex: 'none' }}>
                 {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
             </button>
         </li>
