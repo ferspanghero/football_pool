@@ -235,7 +235,7 @@ function LockedRow({
                 <input className="pick-input home" type="number" value={pick ? String(pick.home) : ''} disabled readOnly />
                 {result && <span className="pick-actual">{result.score.home}</span>}
             </span>
-            <span className="pick-dash">-</span>
+            <span className="pick-dash pick-dash-stacked">-</span>
             <span className="pick-num away">
                 <input className="pick-input away" type="number" value={pick ? String(pick.away) : ''} disabled readOnly />
                 {result && <span className="pick-actual">{result.score.away}</span>}
@@ -323,13 +323,9 @@ function OpenRow({ matchId, prefix, home, away, pick, firstScorer, time, onSaved
                 </span>
                 <FirstScorerToggle side="HOME" matchId={matchId} label={home.name} active={scorer === 'HOME'} onToggle={toggleScorer} onBlur={onRowBlur} />
             </span>
-            <span className="pick-num home">
-                <input className="pick-input home" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} onBlur={onRowBlur} />
-            </span>
+            <input className="pick-input home" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={homeGoals} onChange={onChange(setHomeGoals)} onBlur={onRowBlur} />
             <span className="pick-dash">-</span>
-            <span className="pick-num away">
-                <input className="pick-input away" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} onBlur={onRowBlur} />
-            </span>
+            <input className="pick-input away" data-match={matchId} type="number" inputMode="numeric" min={0} max={20} value={awayGoals} onChange={onChange(setAwayGoals)} onBlur={onRowBlur} />
             <span className="pick-team away">
                 <FirstScorerToggle side="AWAY" matchId={matchId} label={away.name} active={scorer === 'AWAY'} onToggle={toggleScorer} onBlur={onRowBlur} />
                 <span className="team-label">

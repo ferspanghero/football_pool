@@ -269,10 +269,12 @@ button.fs-pick { cursor: pointer; }
 
 /* Per-match result feedback on a scored My-picks row (BL6): the actual goals sit directly under
    each score input. The cell is fixed-width and the input fills it, so the (centered) actual lines
-   up under the (centered) prediction. Top-align the score cells so the inputs + dash line up. */
+   up under the (centered) prediction. Top-align the stacked score cells (and their dash) so the
+   inputs sit above their actuals; open rows have no actual, so their dash stays grid-centered with
+   the inputs. */
 .pick-num { display: inline-flex; flex-direction: column; align-items: center; align-self: start; width: 4rem; }
 .pick-num .pick-input { width: 100%; }
-.pick-dash { align-self: start; }
+.pick-dash-stacked { align-self: start; }
 .pick-actual { font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-top: 0.3rem; line-height: 1; }
 
 /* Hide the number-input spin arrows: they push the typed number off-centre (so the actual goal
