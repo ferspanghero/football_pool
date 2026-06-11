@@ -151,8 +151,10 @@ describe('POST /api/admin/test/clock', () => {
                 env,
             );
 
-        // Act + Assert — default boot clock is wall-clock (today, before any 2026 kickoff): save allowed
-        expect((await savePrediction()).status).toBe(200);
+        // Act + Assert — the default boot clock is the real wall clock, so the save is allowed iff
+        // now is before kickoff: true pre-tournament, false once the first match has started.
+        const realtimeStatus = Date.now() < Date.parse(firstMatch.kickoffUtc) ? 200 : 403;
+        expect((await savePrediction()).status).toBe(realtimeStatus);
 
         // Flip to a FIXED clock just past kickoff → the same save now locks
         const fixed = await postClock(
@@ -163,10 +165,10 @@ describe('POST /api/admin/test/clock', () => {
         expect(fixed.status).toBe(200);
         expect((await savePrediction()).status).toBe(403);
 
-        // Flip back to REALTIME → save allowed again
+        // Flip back to REALTIME → behavior tracks the real wall clock again (same as the boot clock)
         const real = await postClock(app, { mode: 'REALTIME' }, { cookie, env });
         expect(real.status).toBe(200);
-        expect((await savePrediction()).status).toBe(200);
+        expect((await savePrediction()).status).toBe(realtimeStatus);
     });
 });
 

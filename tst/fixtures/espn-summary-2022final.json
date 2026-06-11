@@ -1,0 +1,497 @@
+{
+  "header": {
+    "competitions": [
+      {
+        "status": {
+          "type": {
+            "name": "STATUS_FINAL_PEN",
+            "completed": true
+          }
+        },
+        "competitors": [
+          {
+            "homeAway": "home",
+            "score": "3",
+            "team": {
+              "id": "202",
+              "abbreviation": "ARG",
+              "displayName": "Argentina"
+            }
+          },
+          {
+            "homeAway": "away",
+            "score": "3",
+            "team": {
+              "id": "478",
+              "abbreviation": "FRA",
+              "displayName": "France"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "keyEvents": [
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": null,
+      "type": {
+        "text": "Kickoff"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Penalty - Scored"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Goal"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": null,
+      "type": {
+        "text": "Halftime"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": null,
+      "type": {
+        "text": "Start 2nd Half"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Penalty - Scored"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Goal"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": null,
+      "type": {
+        "text": "End Regular Time"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 3
+      },
+      "team": null,
+      "type": {
+        "text": "Start Extra Time"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 3
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 3
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 3
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 3
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 3
+      },
+      "team": null,
+      "type": {
+        "text": "Halftime Extra Time"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": null,
+      "type": {
+        "text": "Start 2nd Half Extra Time"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Goal"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Penalty - Scored"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "478"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 4
+      },
+      "team": null,
+      "type": {
+        "text": "End Extra Time"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 5
+      },
+      "team": null,
+      "type": {
+        "text": "Start Shootout"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 5
+      },
+      "team": {
+        "id": "202"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 5
+      },
+      "team": null,
+      "type": {
+        "text": "End Match"
+      }
+    }
+  ]
+}

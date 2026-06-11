@@ -29,3 +29,8 @@ binding = "DB"
 database_name = "football-pool"
 database_id = "004c35e8-7a12-48ea-bb04-d325dff66ec5"
 migrations_dir = "migrations"
+
+# Hourly results sync (BL4). The handler no-ops outside the tournament window, so it is inert
+# year-round and only does work during the World Cup. Pulls from ESPN's key-less feed — no secret.
+[triggers]
+crons = ["0 * * * *"]

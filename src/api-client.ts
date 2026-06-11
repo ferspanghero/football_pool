@@ -3,7 +3,7 @@
  * 2xx and rejects with an `ApiError` carrying the server's `{ code, message }` envelope.
  */
 
-import type { FirstScorer, LeaderboardRow, Match, MatchId, PhaseId, Score, Team, TeamId } from '@shared/types';
+import type { FirstScorer, LeaderboardRow, Match, MatchId, PhaseId, ResultSource, Score, Team, TeamId } from '@shared/types';
 
 export type ErrorCode =
     | 'UNAUTHENTICATED'
@@ -85,9 +85,13 @@ export const api = {
             body: { homeGoals: score.home, awayGoals: score.away, firstScorer: firstScorer ?? null },
         }),
     adminListResults: () =>
-        request<{ results: Array<{ matchId: MatchId; home: number; away: number; firstScorer: FirstScorer | null }> }>(
-            '/api/admin/results',
-        ),
+        request<{
+            results: Array<{ matchId: MatchId; home: number; away: number; firstScorer: FirstScorer | null; source: ResultSource }>;
+        }>('/api/admin/results'),
+    adminSyncResults: () =>
+        request<{ summary: { processed: number; written: number; skipped: number } }>('/api/admin/sync-results', {
+            method: 'POST',
+        }),
     adminDeletePlayer: (playerId: number) =>
         request<{ ok: true }>(`/api/admin/players/${playerId}`, { method: 'DELETE' }),
     adminListPlayers: (gameId: number) =>

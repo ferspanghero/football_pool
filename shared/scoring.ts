@@ -40,16 +40,19 @@ export function scoreFirstScorer(
 }
 
 /**
- * Determine the tournament champion from the Final's resolved teams and 90-minute score.
- * Returns undefined if either input is missing or the Final ended in a draw at 90 minutes.
+ * Validate the configured tournament champion against the Final's resolved teams.
+ *
+ * Returns `champion` when it is one of the Final's two teams, else `undefined` (covers an unset
+ * champion, an unresolved Final, or a champion that mistakenly names a team not in the Final).
+ * Decoupled from the Final's 90-minute score, so a Final won in extra time / penalties — stored as
+ * a 90-minute draw — still awards the bonus. The champion is set by hand in `data/tournament.ts`.
  */
 export function determineChampion(
     finalMatchTeams: { homeTeamId: TeamId; awayTeamId: TeamId } | undefined,
-    finalScore: Score | undefined,
+    champion: TeamId | undefined,
 ): TeamId | undefined {
-    if (!finalMatchTeams || !finalScore) return undefined;
-    if (finalScore.home > finalScore.away) return finalMatchTeams.homeTeamId;
-    if (finalScore.away > finalScore.home) return finalMatchTeams.awayTeamId;
+    if (!finalMatchTeams || champion === undefined) return undefined;
+    if (champion === finalMatchTeams.homeTeamId || champion === finalMatchTeams.awayTeamId) return champion;
 
     return undefined;
 }

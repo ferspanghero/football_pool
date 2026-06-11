@@ -20,6 +20,7 @@ import { playersRepo } from '@api/repos/players';
 import { resultsRepo } from '@api/repos/results';
 import { requireAdmin } from '@api/middleware';
 import { isValidGoal, MAX_GOALS, parseFirstScorer, readJson } from '@api/http';
+import { runResultsSync } from '@api/scheduled';
 import { MATCHES } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 import type { FirstScorer } from '@shared/types';
@@ -78,8 +79,22 @@ adminRoutes.get('/admin/results', requireAdmin, async (c) => {
             home: r.score.home,
             away: r.score.away,
             firstScorer: r.firstScorer ?? null,
+            source: r.source,
         })),
     });
+});
+
+// Manually run the results sync now (BL4) — the same job the hourly cron runs, on demand, so an
+// admin can pull finished results immediately. Bypasses the tournament-window guard (an explicit
+// action) but otherwise behaves identically: AUTO writes never overwrite a MANUAL row.
+adminRoutes.post('/admin/sync-results', requireAdmin, async (c) => {
+    try {
+        const summary = await runResultsSync(c.env, { now: c.var.clock(), ignoreWindow: true });
+
+        return c.json({ summary });
+    } catch {
+        return c.json({ error: { code: 'INTERNAL', message: 'results sync failed' } }, 502);
+    }
 });
 
 adminRoutes.post('/admin/games', requireAdmin, async (c) => {

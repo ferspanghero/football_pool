@@ -171,6 +171,9 @@ form.stack label { display: flex; flex-direction: column; gap: 0.25rem; font-siz
 }
 .badge.locked { background: #fff5f5; color: var(--bad); }
 .badge.tbd { background: #f1f3f5; color: var(--muted); }
+/* Admin result provenance (BL4): auto-pulled vs hand-entered. */
+.badge.source-auto { background: var(--accent-soft); color: var(--accent); }
+.badge.source-manual { background: #f1f3f5; color: var(--muted); }
 
 /* Loading skeleton */
 .skeleton { display: flex; flex-direction: column; gap: 0.6rem; }

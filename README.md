@@ -4,13 +4,13 @@ A web app for a group of friends to predict FIFA 2026 World Cup match scores and
 
 ## How It Works
 
-1. An admin (single shared password) creates games and records real match results as they happen
+1. An admin (single shared password) creates games; finished matches' results are pulled automatically from an external results feed, and the admin can record or correct any result by hand
 2. Players join a game with that game's shared password, choosing a display name and a personal password; on return they sign in with just that personal password (and resume automatically on the same device), predict scores for upcoming matches, and pick a tournament champion
 3. Predictions lock at each match's kickoff; the champion pick locks at the tournament's first kickoff
 4. The leaderboard is computed live from recorded results
 
 ```
-admin creates game → players predict → admin records results → leaderboard recomputes
+admin creates game → players predict → results sync (or admin entry) → leaderboard recomputes
 ```
 
 ## Scoring
@@ -41,7 +41,7 @@ Two optional extras can add to — or subtract from — a match's points:
 | Database | Cloudflare D1 (SQLite) |
 | Hosting | A single Cloudflare Worker serves the SPA (as static assets) and the API (free tier) |
 
-Static tournament data (teams and all fixtures) lives in `data/`; only mutable state lives in D1. Knockout fixtures start with placeholder team labels that an admin replaces with the actual teams (by editing `data/tournament.ts`) once each round's pairings are known — there is no automatic standings/bracket resolution. Time-dependent behavior reads a clock provider (`api/clock.ts`) so it can be controlled deterministically in tests.
+Static tournament data (teams and all fixtures) lives in `data/`; only mutable state lives in D1. Knockout fixtures start with placeholder team labels that an admin replaces with the actual teams (by editing `data/tournament.ts`) once each round's pairings are known — there is no automatic standings/bracket resolution. An hourly scheduled job (a Cloudflare Cron Trigger) pulls finished matches' 90-minute scores from an external results feed and writes them automatically — and the admin can trigger the same pull on demand from the Results tab; results entered or corrected by an admin take precedence and are never overwritten. Time-dependent behavior reads a clock provider (`api/clock.ts`) so it can be controlled deterministically in tests.
 
 ## Getting Started
 
@@ -94,7 +94,7 @@ npx playwright test     # browser end-to-end tests
 
 ```
 src/             # Frontend (React) — routes, api-client
-api/             # Worker — routes, auth, clock, repositories
+api/             # Worker — routes, auth, clock, repositories, result-feed providers, scheduled sync
 shared/          # Pure logic shared by client + worker (scoring, phases, time, types)
 data/            # Static tournament data
 migrations/      # D1 schema

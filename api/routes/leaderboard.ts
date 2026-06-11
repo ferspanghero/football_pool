@@ -14,7 +14,7 @@ import { predictionsRepo } from '@api/repos/predictions';
 import { resultsRepo } from '@api/repos/results';
 import { boostsRepo } from '@api/repos/boosts';
 import { computeLeaderboard, determineChampion } from '@shared/scoring';
-import { MATCHES } from '@data/tournament';
+import { MATCHES, CHAMPION } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 import type { FirstScorer, MatchId, PhaseId, Score } from '@shared/types';
 
@@ -45,7 +45,7 @@ leaderboardRoutes.get('/games/:id/leaderboard', async (c) => {
         byPhase.set(b.phaseId, b.matchId);
         boostsByPlayer.set(b.playerId, byPhase);
     }
-    const actualChampionTeamId = determineChampion(MATCH_BY_ID.get('M104'), resultsMap.get('M104'));
+    const actualChampionTeamId = determineChampion(MATCH_BY_ID.get('M104'), CHAMPION);
     const rows = computeLeaderboard(
         players,
         predictions,

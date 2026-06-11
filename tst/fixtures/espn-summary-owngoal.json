@@ -1,0 +1,301 @@
+{
+  "header": {
+    "competitions": [
+      {
+        "status": {
+          "type": {
+            "name": "STATUS_FULL_TIME",
+            "completed": true
+          }
+        },
+        "competitors": [
+          {
+            "homeAway": "home",
+            "score": "1",
+            "team": {
+              "id": "206",
+              "abbreviation": "CAN",
+              "displayName": "Canada"
+            }
+          },
+          {
+            "homeAway": "away",
+            "score": "2",
+            "team": {
+              "id": "2869",
+              "abbreviation": "MAR",
+              "displayName": "Morocco"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "keyEvents": [
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": null,
+      "type": {
+        "text": "Kickoff"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "2869"
+      },
+      "type": {
+        "text": "Goal"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "2869"
+      },
+      "type": {
+        "text": "Goal"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Own Goal"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": null,
+      "type": {
+        "text": "Halftime"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": null,
+      "type": {
+        "text": "Start 2nd Half"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "2869"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "2869"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "2869"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "2869"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "206"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "2869"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": null,
+      "type": {
+        "text": "End Regular Time"
+      }
+    }
+  ]
+}

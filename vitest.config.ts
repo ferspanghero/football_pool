@@ -39,6 +39,8 @@ export default defineConfig({
                 '**/*.d.ts',
                 '**/*.config.*',
                 'api/index.ts',
+                // Cron entry glue: wires the live fetch/clock/providers into the unit-tested syncResults.
+                'api/scheduled.ts',
                 'dist/**',
                 'node_modules/**',
                 '.wrangler/**',

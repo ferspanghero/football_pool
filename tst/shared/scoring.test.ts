@@ -512,23 +512,30 @@ describe('computeLeaderboard', () => {
 });
 
 describe('determineChampion', () => {
-    test('returns home team when home wins', () => {
-        expect(determineChampion({ homeTeamId: 'BRA', awayTeamId: 'ARG' }, { home: 2, away: 1 })).toBe('BRA');
+    const final = { homeTeamId: 'BRA', awayTeamId: 'ARG' };
+
+    test('returns the configured champion when it is the Final home team', () => {
+        expect(determineChampion(final, 'BRA')).toBe('BRA');
     });
 
-    test('returns away team when away wins', () => {
-        expect(determineChampion({ homeTeamId: 'BRA', awayTeamId: 'ARG' }, { home: 1, away: 2 })).toBe('ARG');
+    test('returns the configured champion when it is the Final away team', () => {
+        expect(determineChampion(final, 'ARG')).toBe('ARG');
     });
 
-    test('returns undefined on a draw at 90 minutes', () => {
-        expect(determineChampion({ homeTeamId: 'BRA', awayTeamId: 'ARG' }, { home: 1, away: 1 })).toBeUndefined();
+    test('awards the champion even when set to a side that drew at 90 minutes (won in ET/pens)', () => {
+        // The 90-minute Final is a draw, but the champion is stated explicitly — bonus still pays.
+        expect(determineChampion(final, 'ARG')).toBe('ARG');
     });
 
-    test('returns undefined when bracket is not resolved', () => {
-        expect(determineChampion(undefined, { home: 1, away: 0 })).toBeUndefined();
+    test('returns undefined when no champion is configured', () => {
+        expect(determineChampion(final, undefined)).toBeUndefined();
     });
 
-    test('returns undefined when score is missing', () => {
-        expect(determineChampion({ homeTeamId: 'BRA', awayTeamId: 'ARG' }, undefined)).toBeUndefined();
+    test('returns undefined when the Final is not resolved', () => {
+        expect(determineChampion(undefined, 'BRA')).toBeUndefined();
+    });
+
+    test('returns undefined when the champion is not one of the Final teams (typo guard)', () => {
+        expect(determineChampion(final, 'GER')).toBeUndefined();
     });
 });

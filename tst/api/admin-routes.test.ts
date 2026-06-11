@@ -1,4 +1,4 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, afterEach } from 'vitest';
 import { createTestDb } from './testdb';
 import { buildApp } from '@api/app';
 import { FixedClockProvider } from '@api/clock';
@@ -89,7 +89,7 @@ describe('GET /api/admin/results', () => {
 
         // Assert
         expect(res.status).toBe(200);
-        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: null });
+        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: null, source: 'MANUAL' });
     });
 
     test('includes the recorded first scorer', async () => {
@@ -105,7 +105,7 @@ describe('GET /api/admin/results', () => {
         const body = (await res.json()) as { results: Array<{ matchId: string; firstScorer: string | null }> };
 
         // Assert
-        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: 'AWAY' });
+        expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: 'AWAY', source: 'MANUAL' });
     });
 
     test('returns 401 without admin session', async () => {
@@ -410,6 +410,20 @@ describe('PUT /api/admin/results/:matchId', () => {
         expect(res.status).toBe(200);
         expect((await resultsRepo.findById(db, firstMatch.id))?.firstScorer).toBe('HOME');
     });
+
+    test('marks an admin-recorded result as MANUAL', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        await putResult(app, env, cookie, { homeGoals: 2, awayGoals: 1, firstScorer: 'HOME' });
+
+        // Assert — provenance is MANUAL, so the sync will never overwrite it
+        expect((await resultsRepo.findById(db, firstMatch.id))?.source).toBe('MANUAL');
+    });
 });
 
 describe('DELETE /api/admin/players/:id', () => {
@@ -537,5 +551,83 @@ describe('GET /api/admin/games/:id/players', () => {
 
         // Assert
         expect(res.status).toBe(400);
+    });
+});
+
+describe('POST /api/admin/sync-results (manual sync)', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    // App pinned just after the opener (G_A_1 MEX-RSA) → it is the only kicked-off candidate.
+    const buildPostOpenerApp = (): ReturnType<typeof buildApp> =>
+        buildApp(FixedClockProvider(new Date(Date.parse(FIRST_KICKOFF_UTC) + 1000).toISOString()));
+
+    // An ESPN scoreboard with the opener finished 2-0 (one-sided → first scorer HOME, no summary).
+    const espnBoard = {
+        events: [
+            {
+                id: '1',
+                date: '2026-06-11T19:00Z',
+                status: { type: { name: 'STATUS_FULL_TIME', completed: true } },
+                competitions: [
+                    {
+                        competitors: [
+                            { homeAway: 'home', score: '2', team: { abbreviation: 'MEX' } },
+                            { homeAway: 'away', score: '0', team: { abbreviation: 'RSA' } },
+                        ],
+                    },
+                ],
+            },
+        ],
+    };
+
+    test('returns 401 without an admin session', async () => {
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPostOpenerApp();
+
+        expect((await app.request('/api/admin/sync-results', { method: 'POST' }, env)).status).toBe(401);
+    });
+
+    test('pulls finished results from ESPN and writes them as AUTO', async () => {
+        // Arrange — stub the live fetch the route uses (ESPN is key-less)
+        vi.stubGlobal('fetch', async (url: string) => ({
+            json: async () => (url.includes('/scoreboard') ? espnBoard : { events: [] }),
+        }));
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPostOpenerApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await app.request('/api/admin/sync-results', { method: 'POST', headers: { Cookie: cookie } }, env);
+        const body = (await res.json()) as { summary: { processed: number; written: number; skipped: number } };
+
+        // Assert — the opener is recorded as AUTO (one-sided → first scorer HOME)
+        expect(res.status).toBe(200);
+        expect(body.summary).toEqual({ processed: 1, written: 1, skipped: 0 });
+        const stored = await resultsRepo.findById(db, 'G_A_1');
+        expect(stored?.score).toEqual({ home: 2, away: 0 });
+        expect(stored?.firstScorer).toBe('HOME');
+        expect(stored?.source).toBe('AUTO');
+    });
+
+    test('returns 502 when the sync throws (e.g. a DB failure)', async () => {
+        // Arrange — a DB that throws; log in with a healthy env, then run with the broken one.
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPostOpenerApp();
+        const cookie = await loginAdmin(app, env);
+        const brokenEnv = {
+            ...env,
+            DB: { prepare: () => { throw new Error('db down'); } } as unknown as D1Database,
+        };
+
+        // Act
+        const res = await app.request('/api/admin/sync-results', { method: 'POST', headers: { Cookie: cookie } }, brokenEnv);
+
+        // Assert
+        expect(res.status).toBe(502);
     });
 });

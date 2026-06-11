@@ -10,7 +10,7 @@
  * and redeploy. A knockout match only becomes predictable once both ids are real teams.
  */
 
-import type { Match, PhaseId, Team } from '@shared/types';
+import type { Match, PhaseId, Team, TeamId } from '@shared/types';
 
 /** Group matches play 2 fixtures per round (ids `_1`..`_6`), so round = ceil(suffix / 2). */
 function groupRoundPhase(id: string): PhaseId {
@@ -253,3 +253,12 @@ const sortedKickoffs = MATCHES.map((m) => m.kickoffUtc).slice().sort();
 
 /** ISO 8601 UTC timestamp of the tournament's earliest kickoff. Champion-pick deadline. */
 export const FIRST_KICKOFF_UTC: string = sortedKickoffs[0]!;
+
+/**
+ * The tournament champion (BL4) — set by hand to the winning `TeamId` once the Final is decided,
+ * then redeploy (the last bracket edit). Stated explicitly rather than inferred from the Final's
+ * 90-minute score, so a Final won in extra time / penalties (a 90-minute draw) still awards the
+ * champion bonus. Must be one of the Final (M104) teams; see `determineChampion`. Undefined until
+ * the Final is played.
+ */
+export const CHAMPION: TeamId | undefined = undefined;

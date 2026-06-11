@@ -57,9 +57,16 @@ export type Score = {
 /**
  * Which side scored the first goal of a match — the basis of the first-to-score bonus (BL6).
  * `NONE` means the match ended 0-0 (no goal at all). Not derivable from the 90-minute score
- * (a 2-1 could have started either way), so the admin records it alongside the result.
+ * (a 2-1 could have started either way), so it is recorded alongside the result.
  */
 export type FirstScorer = 'HOME' | 'AWAY' | 'NONE';
+
+/**
+ * Provenance of a recorded result (BL4). `AUTO` was written by the scheduled results sync;
+ * `MANUAL` was entered or edited by an admin. The sync never overwrites a `MANUAL` row, so
+ * hand-entered results always win.
+ */
+export type ResultSource = 'AUTO' | 'MANUAL';
 
 export type Player = {
     id: number;

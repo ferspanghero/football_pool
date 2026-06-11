@@ -1,0 +1,64 @@
+{
+  "events": [
+    {
+      "id": "760415",
+      "date": "2026-06-11T19:00Z",
+      "status": {
+        "type": {
+          "name": "STATUS_FULL_TIME",
+          "completed": true
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "2",
+              "team": {
+                "abbreviation": "MEX"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "team": {
+                "abbreviation": "RSA"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "760414",
+      "date": "2026-06-12T02:00Z",
+      "status": {
+        "type": {
+          "name": "STATUS_SCHEDULED",
+          "completed": false
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "team": {
+                "abbreviation": "KOR"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "team": {
+                "abbreviation": "CZE"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

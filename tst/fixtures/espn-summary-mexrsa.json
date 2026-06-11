@@ -1,0 +1,535 @@
+{
+  "header": {
+    "competitions": [
+      {
+        "status": {
+          "type": {
+            "name": "STATUS_FULL_TIME",
+            "completed": true
+          }
+        },
+        "competitors": [
+          {
+            "homeAway": "home",
+            "score": "2",
+            "team": {
+              "id": "203",
+              "abbreviation": "MEX",
+              "displayName": "Mexico"
+            }
+          },
+          {
+            "homeAway": "away",
+            "score": "0",
+            "team": {
+              "id": "467",
+              "abbreviation": "RSA",
+              "displayName": "South Africa"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "keyEvents": [
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": null,
+      "type": {
+        "text": "Kickoff"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Goal"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 1
+      },
+      "team": null,
+      "type": {
+        "text": "Halftime"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": null,
+      "type": {
+        "text": "Start 2nd Half"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Red Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": true,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Goal - Header"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Yellow Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Substitution"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Start Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "End Delay"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "467"
+      },
+      "type": {
+        "text": "Red Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": {
+        "id": "203"
+      },
+      "type": {
+        "text": "Red Card"
+      }
+    },
+    {
+      "scoringPlay": false,
+      "shootout": false,
+      "period": {
+        "number": 2
+      },
+      "team": null,
+      "type": {
+        "text": "End Regular Time"
+      }
+    }
+  ]
+}

@@ -8,7 +8,7 @@ import { useToast } from '../components/Toast';
 import { TeamSide } from '../components/Flag';
 import { SaveButton } from '../components/SaveButton';
 import { matchSides, type MatchSide } from '../lib/matchDisplay';
-import type { FirstScorer } from '@shared/types';
+import type { FirstScorer, ResultSource } from '@shared/types';
 
 type AdminTab = 'games' | 'results' | 'players';
 
@@ -266,21 +266,25 @@ function AdminResults() {
     const [selectedPhase, setSelectedPhase] = useState<string>('GROUP_R1');
     // Recorded scores as strings so an unrecorded match shows empty (not 0-0); seeded from saved
     // results and updated on save so a saved value survives switching phases away and back.
-    type RecordedResult = { home: string; away: string; firstScorer: FirstScorer | null };
+    type RecordedResult = { home: string; away: string; firstScorer: FirstScorer | null; source: ResultSource };
     const [scores, setScores] = useState<Map<string, RecordedResult>>(new Map());
+    const [syncing, setSyncing] = useState(false);
+    // Bumped after a manual sync so the result rows remount and re-seed from the refreshed scores.
+    const [reloadKey, setReloadKey] = useState(0);
+
+    const toScores = (results: Awaited<ReturnType<typeof api.adminListResults>>['results']) =>
+        new Map(
+            results.map((res) => [
+                res.matchId,
+                { home: String(res.home), away: String(res.away), firstScorer: res.firstScorer, source: res.source },
+            ]),
+        );
 
     useEffect(() => {
         Promise.all([api.tournament(), api.adminListResults()])
             .then(([t, r]) => {
                 setTournament(t);
-                setScores(
-                    new Map(
-                        r.results.map((res) => [
-                            res.matchId,
-                            { home: String(res.home), away: String(res.away), firstScorer: res.firstScorer },
-                        ]),
-                    ),
-                );
+                setScores(toScores(r.results));
             })
             .catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
     }, []);
@@ -289,25 +293,51 @@ function AdminResults() {
         setScores((prev) => new Map(prev).set(matchId, result));
     };
 
+    const onSync = async () => {
+        setSyncing(true);
+        try {
+            const { summary } = await api.adminSyncResults();
+            const r = await api.adminListResults();
+            setScores(toScores(r.results));
+            setReloadKey((k) => k + 1);
+            showToast('success', `Synced — ${summary.written} written, ${summary.skipped} skipped (${summary.processed} finished)`);
+        } catch (err) {
+            showToast('error', err instanceof ApiError ? err.message : 'Sync failed');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     const teams = tournament?.teams ?? [];
     const filtered = (tournament?.matches ?? []).filter((m) => m.phase === selectedPhase);
 
     return (
         <>
             <h2>Results</h2>
-            <label>
-                Phase{' '}
-                <select value={selectedPhase} onChange={(e) => setSelectedPhase(e.target.value)}>
-                    {PHASES.map((p) => (
-                        <option key={p.id} value={p.id}>
-                            {p.label}
-                        </option>
-                    ))}
-                </select>
-            </label>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label>
+                    Phase{' '}
+                    <select value={selectedPhase} onChange={(e) => setSelectedPhase(e.target.value)}>
+                        {PHASES.map((p) => (
+                            <option key={p.id} value={p.id}>
+                                {p.label}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <button type="button" onClick={onSync} disabled={syncing} title="Pull finished results from the live feed now">
+                    {syncing ? 'Syncing…' : 'Sync results now'}
+                </button>
+            </div>
             <ul>
                 {filtered.map((m) => (
-                    <ResultRow key={m.id} matchId={m.id} sides={matchSides(m, teams)} initial={scores.get(m.id)} onSaved={onRowSaved} />
+                    <ResultRow
+                        key={`${m.id}-${reloadKey}`}
+                        matchId={m.id}
+                        sides={matchSides(m, teams)}
+                        initial={scores.get(m.id)}
+                        onSaved={onRowSaved}
+                    />
                 ))}
             </ul>
         </>
@@ -327,8 +357,8 @@ function ResultRow({
 }: {
     matchId: string;
     sides: { home: MatchSide; away: MatchSide };
-    initial: { home: string; away: string; firstScorer: FirstScorer | null } | undefined;
-    onSaved: (matchId: string, result: { home: string; away: string; firstScorer: FirstScorer | null }) => void;
+    initial: { home: string; away: string; firstScorer: FirstScorer | null; source: ResultSource } | undefined;
+    onSaved: (matchId: string, result: { home: string; away: string; firstScorer: FirstScorer | null; source: ResultSource }) => void;
 }) {
     const { showToast } = useToast();
     const [home, setHome] = useState(initial?.home ?? '');
@@ -336,6 +366,9 @@ function ResultRow({
     const [scorer, setScorer] = useState<FirstScorer | ''>(initial?.firstScorer ?? '');
     const [saved, setSaved] = useState(initial !== undefined);
     const [saving, setSaving] = useState(false);
+    // Provenance of the recorded result (BL4): undefined until something is recorded. An admin save
+    // always makes it MANUAL (and the server refuses to let the sync overwrite it thereafter).
+    const [source, setSource] = useState<ResultSource | undefined>(initial?.source);
 
     // The first scorer is determined by the score except when both teams scored: a 0-0 is "no
     // goal", a one-sided result auto-picks the lone scorer (both locked), and only a both-scored
@@ -362,7 +395,8 @@ function ResultRow({
             const firstScorer = selectedScorer || undefined;
             await api.adminSetResult(matchId, { home: h, away: a }, firstScorer);
             setSaved(true);
-            onSaved(matchId, { home, away, firstScorer: firstScorer ?? null });
+            setSource('MANUAL');
+            onSaved(matchId, { home, away, firstScorer: firstScorer ?? null, source: 'MANUAL' });
             showToast('success', `Saved ${matchId}`);
         } catch (err) {
             showToast('error', err instanceof ApiError ? err.message : 'Failed to save');
@@ -386,6 +420,15 @@ function ResultRow({
     return (
         <li style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.25rem 0' }}>
             <code>{matchId}</code>
+            {source && (
+                <span
+                    className={`badge source-${source.toLowerCase()}`}
+                    data-source={source}
+                    title={source === 'AUTO' ? 'Auto-pulled from the results feed' : 'Entered by an admin'}
+                >
+                    {source}
+                </span>
+            )}
             <span style={{ flex: 1 }}>
                 <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} />
             </span>
