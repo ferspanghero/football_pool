@@ -5,13 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FIFA 2026 Pool</title>
     <script>
-        // Apply the saved theme before paint so there's no flash of the default theme.
+        // Apply the saved theme before paint so there's no flash of the default theme. Any non-default
+        // value is applied optimistically (no per-theme list to keep in sync); React hydration then
+        // validates it via getStoredTheme and clears the attribute if it's unknown.
         try {
-            if (localStorage.getItem('fp-theme') === 'elifoot') document.documentElement.dataset.theme = 'elifoot';
+            var saved = localStorage.getItem('fp-theme');
+            if (saved && saved !== 'classic') document.documentElement.dataset.theme = saved;
         } catch {
             /* storage unavailable — fall back to the default theme */
         }
     </script>
+    <!-- Press Start 2P backs the SNES pixel skin. The CSS is tiny and cached; the font binary is
+         fetched lazily by the browser only when SNES-themed text actually renders. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
 </head>
 <body>
     <div id="root"></div>

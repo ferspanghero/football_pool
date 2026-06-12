@@ -1,11 +1,15 @@
 /**
  * Client-side colour theme selection, persisted in `localStorage` and applied via a
- * `data-theme` attribute on `<html>`. The default ("classic") theme needs no attribute —
- * the Elifoot 98 skin is the `[data-theme="elifoot"]` override block in `styles/app.css`.
+ * `data-theme` attribute on `<html>`. The default ("classic") theme needs no attribute; each other
+ * theme is a `[data-theme="<name>"]` override block in its own `styles/<name>.css`, loaded after
+ * `styles/app.css`.
  */
 
-/** The selectable UI themes. `classic` is the original look; `elifoot` is the Elifoot 98 skin. */
-export type ThemeName = 'classic' | 'elifoot';
+/**
+ * The selectable UI themes. `classic` is the original look; `elifoot` is the Elifoot 98 skin;
+ * `snes` is the dark retro 16-bit pixel skin.
+ */
+export type ThemeName = 'classic' | 'elifoot' | 'snes';
 
 const STORAGE_KEY = 'fp-theme';
 
@@ -13,12 +17,14 @@ const STORAGE_KEY = 'fp-theme';
 export const THEMES: ReadonlyArray<{ value: ThemeName; label: string }> = [
     { value: 'classic', label: 'Classic' },
     { value: 'elifoot', label: 'Elifoot 98' },
+    { value: 'snes', label: 'SNES Pixel' },
 ];
 
 /** Read the persisted theme, falling back to `classic` when unset, unknown, or storage is unavailable. */
 export function getStoredTheme(): ThemeName {
     try {
-        return localStorage.getItem(STORAGE_KEY) === 'elifoot' ? 'elifoot' : 'classic';
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return THEMES.some((t) => t.value === stored) ? (stored as ThemeName) : 'classic';
     } catch {
         return 'classic';
     }

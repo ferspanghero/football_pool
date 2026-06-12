@@ -1,0 +1,234 @@
+/*
+ * SNES Pixel theme — opt-in skin. Loaded after app.css and activated by [data-theme="snes"] on
+ * <html> (set by src/lib/theme.ts). A dark 16-bit "JRPG menu-box" look: deep indigo desktop, navy
+ * panels framed by light-blue pixel borders, off-white text, gold + cyan accents. Re-points the
+ * shared design tokens to the SNES palette and layers flat, sharp-cornered pixel surfaces on top.
+ * Layout, grid structure and markup are unchanged — only colours, borders and the pixel font differ.
+ * Must load after app.css so its equal-specificity overrides win by source order.
+ *
+ * Typography: the whole UI renders in the "Press Start 2P" pixel font (loaded in index.html), so
+ * sizes are tuned down hard and line-height opened up to keep dense rows (picks grid, tables)
+ * fitting and legible. Where pixel glyphs are widest (status pills, scores) the text is shrunk and
+ * de-chipped rather than allowed to overflow the fixed grid columns.
+ */
+[data-theme="snes"] {
+    --bg: #10122b;          /* deep indigo desktop */
+    --fg: #eef0ff;          /* off-white body text */
+    --muted: #9aa3d8;       /* lavender-grey — readable on the dark panels */
+    --border: #8a9bff;      /* light-blue pixel border (the menu-box frame) */
+    --accent: #4cc9f0;      /* cyan — links / active tab / info */
+    --accent-soft: #1a1d3a; /* pale tints become dark navy panels */
+    --good: #5ad65a;
+    --warn: #ffcc00;        /* gold */
+    --bad: #ff5a5a;
+
+    /* SNES-specific surfaces. */
+    --snes-panel: #1a1d3a;  /* card / box body */
+    --snes-raised: #262c57; /* raised buttons, table headers, chips */
+    --snes-ink: #050615;    /* near-black outline / pressed face / pixel shadow */
+    --snes-gold: #ffcc00;
+
+    color-scheme: dark;     /* dark native controls: number spinners, date picker, scrollbars */
+}
+
+/* Pixel font everywhere, shrunk to fit. Flat, square surfaces (no rounding, no soft shadows). */
+[data-theme="snes"] body {
+    font-family: "Press Start 2P", "Courier New", monospace;
+    font-size: 11px;
+    line-height: 1.75;
+    letter-spacing: 0;
+}
+[data-theme="snes"] *,
+[data-theme="snes"] *::before,
+[data-theme="snes"] *::after {
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* Headings: pixel font sized up from the 11px body, gold to read as menu titles. */
+[data-theme="snes"] main h1,
+[data-theme="snes"] .entry-top h1 { font-size: 18px; line-height: 1.4; color: var(--snes-gold); }
+[data-theme="snes"] main h2,
+[data-theme="snes"] .phase-nav h2 { font-size: 14px; line-height: 1.5; color: var(--snes-gold); }
+[data-theme="snes"] h3 { font-size: 12px; line-height: 1.5; }
+
+/* Header → navy title bar with a light-blue underline; brand in gold. */
+[data-theme="snes"] header.app-header {
+    background: linear-gradient(180deg, #20254a, #14163200);
+    background-color: var(--snes-panel);
+    border-bottom: 2px solid var(--border);
+}
+[data-theme="snes"] header.app-header strong { color: var(--snes-gold); }
+[data-theme="snes"] header.app-header .hint { color: var(--muted); }
+
+/* Bare anchor links (e.g. "Admin →", "← Back") → cyan in both states, so the browser's dark-scheme
+   default blue/visited-purple doesn't drift off-palette. Tab links carry higher specificity below. */
+[data-theme="snes"] a,
+[data-theme="snes"] a:visited { color: var(--accent); }
+
+/* Tabs → flat menu items; active = cyan text on a sunken navy panel with a gold underline. */
+[data-theme="snes"] nav.tabs a {
+    color: var(--muted);
+    font-size: 10px;
+    border: 2px solid transparent;
+}
+[data-theme="snes"] nav.tabs a.active {
+    color: var(--accent);
+    background: var(--snes-ink);
+    border-color: var(--border);
+    border-bottom-color: var(--snes-gold);
+}
+
+/* Buttons → raised menu-box panels: light-blue frame, light text; pressed = sunken near-black. */
+[data-theme="snes"] button:not(.fs-pick) {
+    background: var(--snes-raised);
+    color: var(--fg);
+    border: 2px solid var(--border);
+    font-size: 10px;
+    padding: 0.45rem 0.7rem;
+}
+[data-theme="snes"] button:not(.fs-pick):hover:not(:disabled) { background: #313a73; }
+[data-theme="snes"] button:not(.fs-pick):active:not(:disabled) {
+    background: var(--snes-ink);
+    border-color: var(--snes-ink) var(--border) var(--border) var(--snes-ink);
+}
+[data-theme="snes"] button.secondary { background: var(--snes-panel); color: var(--accent); }
+[data-theme="snes"] button:disabled { opacity: 0.45; }
+/* Keep the 2× boost "on" state legible (gold face needs dark text, not the base white). */
+[data-theme="snes"] .pick-boost .boost-on {
+    background: var(--snes-gold);
+    border-color: var(--snes-gold);
+    color: var(--snes-ink);
+}
+
+/* Inputs / selects → sunken dark fields with a light-blue frame. */
+[data-theme="snes"] input[type="text"],
+[data-theme="snes"] input[type="password"],
+[data-theme="snes"] input[type="number"],
+[data-theme="snes"] input[type="datetime-local"],
+[data-theme="snes"] select {
+    background: #0a0c20;
+    color: var(--fg);
+    border: 2px solid var(--border);
+    font-size: 11px;
+}
+[data-theme="snes"] input:disabled {
+    background: #0e1026;
+    color: var(--muted);
+    border-color: var(--snes-raised);
+}
+
+/* Panels / boxes → dark navy with a light-blue pixel frame, sharp corners. */
+[data-theme="snes"] .group-card,
+[data-theme="snes"] .day-card,
+[data-theme="snes"] .leaderboard-rules,
+[data-theme="snes"] .resume-card,
+[data-theme="snes"] .toast {
+    background: var(--snes-panel);
+    border: 2px solid var(--border);
+    color: var(--fg);
+}
+[data-theme="snes"] .resume-card { border-color: var(--accent); }
+[data-theme="snes"] .clock-control { border: 1px dashed var(--muted); }
+[data-theme="snes"] .leaderboard-rules p { color: var(--muted); }
+
+/* Champion banner → dark panel with a celebratory gold frame + gold text. */
+[data-theme="snes"] .champion-banner {
+    background: var(--snes-panel);
+    border: 2px solid var(--snes-gold);
+    color: var(--snes-gold);
+}
+[data-theme="snes"] .champion-banner strong { color: var(--snes-gold); }
+
+/* Error box → dark panel with a red frame and light-red text. */
+[data-theme="snes"] .error {
+    background: #2a1320;
+    border: 2px solid var(--bad);
+    color: #ffb3b3;
+}
+[data-theme="snes"] .toast-error { background: #2a1320; }
+
+/* Leaderboard table → dark body, raised navy header row. */
+[data-theme="snes"] .leaderboard-table {
+    background: var(--snes-panel);
+    border: 2px solid var(--border);
+    font-size: 10px;
+}
+[data-theme="snes"] .leaderboard-table th {
+    background: var(--snes-raised);
+    color: var(--snes-gold);
+    border-bottom: 2px solid var(--border);
+}
+[data-theme="snes"] .leaderboard-table td { border-bottom: 1px solid var(--snes-raised); }
+
+/* Badges → flat dark chips; per-variant text colour carries the meaning. The light-tinted base
+   variants (outcome / points / source) are re-pointed onto the dark panel so they read on navy. */
+[data-theme="snes"] .badge {
+    background: var(--snes-raised);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-size: 9px;
+}
+[data-theme="snes"] .badge.tbd,
+[data-theme="snes"] .badge.outcome-miss,
+[data-theme="snes"] .badge.pts-zero,
+[data-theme="snes"] .badge.source-manual { color: var(--muted); }
+[data-theme="snes"] .badge.locked,
+[data-theme="snes"] .badge.pts-neg { color: var(--bad); }
+[data-theme="snes"] .badge.outcome-exact,
+[data-theme="snes"] .badge.outcome-good,
+[data-theme="snes"] .badge.pts-pos { color: var(--good); }
+[data-theme="snes"] .badge.outcome-ok,
+[data-theme="snes"] .badge.source-auto { color: var(--accent); }
+[data-theme="snes"] .badge.outcome-gd,
+[data-theme="snes"] .badge.boost { color: var(--snes-gold); }
+
+/* Picks grid: tighten the pixel-wide text so it stays inside the fixed columns. Status reads as
+   plain coloured text (no chip) so e.g. "locked" fits the 3.5rem column; small meta text shrinks. */
+[data-theme="snes"] .pick-status .badge {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 9px;
+}
+[data-theme="snes"] .pick-prefix,
+[data-theme="snes"] .pick-time,
+[data-theme="snes"] .pick-actual { font-size: 8px; }
+[data-theme="snes"] .pick-prefix,
+[data-theme="snes"] .pick-dash,
+[data-theme="snes"] .pick-boost { color: var(--muted); }
+[data-theme="snes"] .pick-time,
+[data-theme="snes"] .pick-actual { color: var(--accent); }
+[data-theme="snes"] .day-card h3 { color: var(--muted); }
+
+/* Compact pixel score boxes on desktop (mobile keeps the full-width 44px tap targets from base). */
+@media (min-width: 641px) {
+    [data-theme="snes"] .pick-num { width: 2.6rem; }
+    [data-theme="snes"] .pick-input { width: 2.6rem; padding: 0.3rem 0.15rem; }
+}
+
+/* Loading skeleton → dark navy shimmer instead of the light-grey one. */
+[data-theme="snes"] .skeleton-line {
+    background: linear-gradient(90deg, #1a1d3a 25%, #2c3263 37%, #1a1d3a 63%);
+    background-size: 400% 100%;
+}
+
+/* Form labels + hints sit on the dark desktop → light label, muted hint. */
+[data-theme="snes"] form.stack label { color: var(--fg); }
+[data-theme="snes"] .hint { color: var(--muted); font-size: 9px; }
+
+/* Mobile: matches and leaderboard rows reflow into cards that the base styles paint WHITE — on the
+   dark skin that hides the off-white text. Re-skin those cards as dark panels (the row text is
+   already light, so it reads once the white background is gone). The table wrapper goes transparent
+   so each row reads as its own box rather than a box-in-a-box. */
+@media (max-width: 640px) {
+    [data-theme="snes"] .pick-row,
+    [data-theme="snes"] .leaderboard-table tr {
+        background: var(--snes-panel);
+        border: 2px solid var(--border);
+    }
+    [data-theme="snes"] .leaderboard-table {
+        background: transparent;
+        border: none;
+    }
+}

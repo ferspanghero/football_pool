@@ -33,6 +33,17 @@ describe('getStoredTheme', () => {
         expect(theme).toBe('elifoot');
     });
 
+    test('returns snes when snes is stored', () => {
+        // Arrange
+        localStorage.setItem(KEY, 'snes');
+
+        // Act
+        const theme = getStoredTheme();
+
+        // Assert
+        expect(theme).toBe('snes');
+    });
+
     test('falls back to classic for an unknown stored value', () => {
         // Arrange
         localStorage.setItem(KEY, 'bogus');
@@ -72,6 +83,14 @@ describe('applyTheme', () => {
         expect(document.documentElement.dataset.theme).toBe('elifoot');
     });
 
+    test('sets the data-theme attribute for the snes theme', () => {
+        // Act
+        applyTheme('snes');
+
+        // Assert
+        expect(document.documentElement.dataset.theme).toBe('snes');
+    });
+
     test('removes the data-theme attribute for the classic default', () => {
         // Arrange
         document.documentElement.dataset.theme = 'elifoot';
@@ -102,6 +121,16 @@ describe('setTheme', () => {
         expect(getStoredTheme()).toBe('elifoot');
     });
 
+    test('round-trips the snes theme through getStoredTheme', () => {
+        // Arrange, Act
+        setTheme('snes');
+
+        // Assert
+        expect(localStorage.getItem(KEY)).toBe('snes');
+        expect(document.documentElement.dataset.theme).toBe('snes');
+        expect(getStoredTheme()).toBe('snes');
+    });
+
     test('still applies the theme when persistence fails', () => {
         // Arrange
         const original = Storage.prototype.setItem;
@@ -122,8 +151,8 @@ describe('setTheme', () => {
 });
 
 describe('THEMES', () => {
-    test('lists classic then elifoot', () => {
+    test('lists classic, elifoot, then snes', () => {
         // Arrange, Act, Assert
-        expect(THEMES.map((t) => t.value)).toEqual(['classic', 'elifoot']);
+        expect(THEMES.map((t) => t.value)).toEqual(['classic', 'elifoot', 'snes']);
     });
 });

@@ -9,6 +9,7 @@ import { cleanup, createGame, enterGameUi, setServerClock, uniqueGameName } from
 const GAME_PW = 'themepw';
 const CLASSIC_BG = 'rgb(250, 250, 250)'; // --bg #fafafa
 const ELIFOOT_BG = 'rgb(0, 128, 0)'; // --bg #008000
+const SNES_BG = 'rgb(16, 18, 43)'; // --bg #10122b
 
 let createdGameIds: number[] = [];
 
@@ -48,6 +49,44 @@ test('E17 — theme toggle switches skin, persists across reload, and reverts', 
     await playerPage.reload();
     await expect(html).toHaveAttribute('data-theme', 'elifoot');
     await expect(body).toHaveCSS('background-color', ELIFOOT_BG);
+
+    // Act, Assert — switching back to Classic clears the attribute and the skin.
+    await playerPage.getByLabel('Theme').selectOption('classic');
+    await expect(html).not.toHaveAttribute('data-theme');
+    await expect(body).toHaveCSS('background-color', CLASSIC_BG);
+
+    await adminCtx.close();
+    await playerCtx.close();
+});
+
+test('E19 — SNES theme applies a dark skin, persists across reload, and reverts', async ({ browser }) => {
+    const adminCtx = await browser.newContext();
+    const adminPage = await adminCtx.newPage();
+    const playerCtx = await browser.newContext();
+    const playerPage = await playerCtx.newPage();
+
+    // Arrange — a player in a game, on the default (classic) theme.
+    await setServerClock(adminPage, { mode: 'REALTIME' });
+    const gameName = uniqueGameName('E19');
+    createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
+    await enterGameUi(playerPage, gameName, GAME_PW, 'Pixeler');
+
+    const html = playerPage.locator('html');
+    const body = playerPage.locator('body');
+    await expect(html).not.toHaveAttribute('data-theme');
+    await expect(body).toHaveCSS('background-color', CLASSIC_BG);
+
+    // Act — switch to the SNES pixel skin.
+    await playerPage.getByLabel('Theme').selectOption('snes');
+
+    // Assert — attribute set and the dark desktop actually applied.
+    await expect(html).toHaveAttribute('data-theme', 'snes');
+    await expect(body).toHaveCSS('background-color', SNES_BG);
+
+    // Act, Assert — the choice survives a full reload (pre-paint script re-applies it).
+    await playerPage.reload();
+    await expect(html).toHaveAttribute('data-theme', 'snes');
+    await expect(body).toHaveCSS('background-color', SNES_BG);
 
     // Act, Assert — switching back to Classic clears the attribute and the skin.
     await playerPage.getByLabel('Theme').selectOption('classic');

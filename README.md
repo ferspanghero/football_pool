@@ -13,7 +13,7 @@ A web app for a group of friends to predict FIFA 2026 World Cup match scores and
 admin creates game → players predict → results sync (or admin entry) → leaderboard recomputes
 ```
 
-Players can switch the interface between the default look and a retro **Elifoot 98** theme; the choice is remembered in the browser.
+Players can switch the interface between the default look and a set of opt-in retro themes; the choice is remembered in the browser.
 
 ## Scoring
 
