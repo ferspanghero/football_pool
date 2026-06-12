@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError, type GameSummary, type MePayload } from '../api-client';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 export function Entry() {
     const navigate = useNavigate();
@@ -47,7 +48,10 @@ export function Entry() {
 
     return (
         <main className="container">
-            <h1>FIFA 2026 Pool</h1>
+            <div className="entry-top">
+                <h1>FIFA 2026 Pool</h1>
+                <ThemeToggle />
+            </div>
 
             {resume && (
                 <section className="resume-card">
@@ -67,7 +71,7 @@ export function Entry() {
                 <form className="stack" onSubmit={onSubmit}>
                     <label>
                         Game
-                        <select value={selectedGameId} onChange={(e) => setSelectedGameId(e.target.value)} required>
+                        <select aria-label="Game" value={selectedGameId} onChange={(e) => setSelectedGameId(e.target.value)} required>
                             {games.map((g) => (
                                 <option key={g.id} value={g.id}>
                                     {g.name}

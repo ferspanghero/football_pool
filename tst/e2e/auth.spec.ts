@@ -41,7 +41,7 @@ test('E5 — wrong admin password and wrong game password are rejected', async (
     const playerCtx = await browser.newContext();
     const playerPage = await playerCtx.newPage();
     await playerPage.goto('/');
-    await playerPage.getByRole('combobox').selectOption({ label: gameName });
+    await playerPage.getByLabel('Game', { exact: true }).selectOption({ label: gameName });
     await playerPage.getByLabel('Display name', { exact: true }).fill('Mallory');
     await playerPage.getByLabel('Your password', { exact: true }).fill('mallory-pw');
     await playerPage.getByLabel('Game password', { exact: true }).fill('wrong-game-password');

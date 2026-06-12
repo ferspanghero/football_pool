@@ -44,7 +44,7 @@ test('E8 — returning login needs the player password; the game password cannot
     const newDeviceCtx = await browser.newContext();
     const newDevicePage = await newDeviceCtx.newPage();
     await newDevicePage.goto('/');
-    await newDevicePage.getByRole('combobox').selectOption({ label: gameName });
+    await newDevicePage.getByLabel('Game', { exact: true }).selectOption({ label: gameName });
     await newDevicePage.getByLabel('Display name', { exact: true }).fill('Alice');
     await newDevicePage.getByLabel('Your password', { exact: true }).fill('alice-secret');
     await newDevicePage.getByRole('button', { name: 'Enter game' }).click();
@@ -54,7 +54,7 @@ test('E8 — returning login needs the player password; the game password cannot
     const attackerCtx = await browser.newContext();
     const attackerPage = await attackerCtx.newPage();
     await attackerPage.goto('/');
-    await attackerPage.getByRole('combobox').selectOption({ label: gameName });
+    await attackerPage.getByLabel('Game', { exact: true }).selectOption({ label: gameName });
     await attackerPage.getByLabel('Display name', { exact: true }).fill('Alice');
     await attackerPage.getByLabel('Your password', { exact: true }).fill('not-alices-password');
     await attackerPage.getByLabel('Game password', { exact: true }).fill(GAME_PW);

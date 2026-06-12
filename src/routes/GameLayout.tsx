@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, type MePayload, type TournamentData } from '../api-client';
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
+import { ThemeToggle } from '../components/ThemeToggle';
 import type { FirstScorer, MatchId, Score } from '@shared/types';
 
 /** Recorded results keyed by match id — the score and (if recorded) who scored first. */
@@ -86,6 +87,7 @@ export function GameLayout() {
                             Leaderboard
                         </NavLink>
                     </nav>
+                    <ThemeToggle />
                     <button className="secondary" onClick={onLogout} type="button">
                         Switch game
                     </button>

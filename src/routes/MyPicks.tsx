@@ -430,7 +430,7 @@ function ChampionBanner({ locked }: { locked: boolean }) {
     };
 
     return (
-        <section style={{ background: 'var(--accent-soft)', padding: '0.75rem', borderRadius: 6, margin: '1rem 0' }}>
+        <section className="champion-banner">
             <strong>Champion pick:</strong>{' '}
             {locked ? (
                 <span>{ctx.me.championTeamId ?? 'no pick'} (locked)</span>

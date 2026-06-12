@@ -42,7 +42,7 @@ test('admin creates game → player predicts → result recorded → leaderboard
     const playerCtx = await browser.newContext();
     const playerPage = await playerCtx.newPage();
     await playerPage.goto('/');
-    await playerPage.getByRole('combobox').selectOption({ label: gameName });
+    await playerPage.getByLabel('Game', { exact: true }).selectOption({ label: gameName });
     await playerPage.getByLabel('Display name', { exact: true }).fill(DISPLAY_NAME);
     await playerPage.getByLabel('Your password', { exact: true }).fill('alice-pw');
     await playerPage.getByLabel('Game password', { exact: true }).fill(GAME_PW);

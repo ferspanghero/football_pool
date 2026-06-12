@@ -1,0 +1,162 @@
+/*
+ * Elifoot 98 theme — opt-in skin. Loaded after app.css and activated by [data-theme="elifoot"]
+ * on <html> (set by src/lib/theme.ts). Re-points the shared design tokens to the Elifoot palette
+ * (green desktop, navy title bars, white data boxes, yellow labels) and layers the Win98 bevel/box
+ * treatments on top. Layout, grid structure and markup are unchanged — only colours, borders and
+ * fonts differ. Must load after app.css so its equal-specificity resets win by source order.
+ */
+[data-theme="elifoot"] {
+    --bg: #008000;          /* Elifoot green desktop */
+    --fg: #000000;
+    --muted: #3a3a3a;       /* readable inside the white data boxes / mobile cards */
+    --border: #000000;
+    --accent: #000080;      /* Win98 navy */
+    --accent-soft: #ffffff; /* panels become white list boxes */
+    --bad: #c00000;
+    --ef-face: #c0c0c0;     /* button face */
+    --ef-light: #ffffff;    /* bevel highlight (top/left) */
+    --ef-shadow: #808080;   /* bevel shadow (bottom/right) */
+    --ef-navy: #0a246a;     /* Win98 active-title navy */
+    --ef-yellow: #ffff00;
+}
+
+/* Period font; bold, flat, square Win98 surfaces everywhere. The whole UI is bold (as Elifoot's
+   MS Sans Serif rendering reads), which also lifts contrast on the green desktop. */
+[data-theme="elifoot"] body {
+    font-family: "MS Sans Serif", Tahoma, Geneva, Verdana, system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+}
+[data-theme="elifoot"] *,
+[data-theme="elifoot"] *::before,
+[data-theme="elifoot"] *::after {
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* Header → Win98 title bar: navy→blue gradient, white text. */
+[data-theme="elifoot"] header.app-header {
+    background: linear-gradient(90deg, var(--ef-navy), #3a6ea5);
+    border-bottom: 2px solid #000;
+}
+[data-theme="elifoot"] header.app-header strong,
+[data-theme="elifoot"] header.app-header .hint { color: #fff; }
+
+/* Tabs + buttons → raised gray bevels; pressed/active = inset. (The ⚽ first-scorer
+   toggle keeps its flat look.) */
+[data-theme="elifoot"] nav.tabs a,
+[data-theme="elifoot"] button:not(.fs-pick) {
+    background: var(--ef-face);
+    color: #000;
+    font-weight: 700;
+    border: 2px solid;
+    border-radius: 0;
+    border-color: var(--ef-light) var(--ef-shadow) var(--ef-shadow) var(--ef-light);
+}
+[data-theme="elifoot"] nav.tabs a.active,
+[data-theme="elifoot"] button:not(.fs-pick):active {
+    border-color: var(--ef-shadow) var(--ef-light) var(--ef-light) var(--ef-shadow);
+}
+[data-theme="elifoot"] button.secondary { background: var(--ef-face); color: #000; }
+/* Keep the 2× boost "on" state visible (it would otherwise collapse into the gray face). */
+[data-theme="elifoot"] .pick-boost .boost-on { background: var(--warn); color: #000; }
+
+/* Inputs/selects → sunken white fields. */
+[data-theme="elifoot"] input[type="text"],
+[data-theme="elifoot"] input[type="password"],
+[data-theme="elifoot"] input[type="number"],
+[data-theme="elifoot"] input[type="datetime-local"],
+[data-theme="elifoot"] select {
+    background: #fff;
+    color: #000;
+    border: 2px solid;
+    border-color: var(--ef-shadow) var(--ef-light) var(--ef-light) var(--ef-shadow);
+}
+
+/* Section headings + labels sit on the green desktop → yellow Elifoot text. */
+[data-theme="elifoot"] main h1,
+[data-theme="elifoot"] main h2,
+[data-theme="elifoot"] .phase-nav h2,
+[data-theme="elifoot"] .day-card h3 {
+    color: var(--ef-yellow);
+    font-weight: 700;
+}
+
+/* Other text directly on the green desktop → white / yellow for contrast. */
+[data-theme="elifoot"] .pick-prefix,
+[data-theme="elifoot"] .pick-dash,
+[data-theme="elifoot"] .pick-boost { color: #fff; font-weight: 700; }
+[data-theme="elifoot"] .pick-time,
+[data-theme="elifoot"] .pick-actual { color: var(--ef-yellow); font-weight: 700; }
+
+/* Day sections collapse to just a yellow label on green (matches carry their own boxes). */
+[data-theme="elifoot"] .day-card { background: transparent; border: none; }
+
+/* White team + score boxes within the existing grid (layout untouched). */
+[data-theme="elifoot"] .pick-team,
+[data-theme="elifoot"] .pick-input {
+    background: #fff;
+    color: #000;
+    border: 1px solid #000;
+}
+[data-theme="elifoot"] .pick-team { padding: 1px 6px; }
+[data-theme="elifoot"] .pick-input { font-weight: 700; }
+
+/* Compact, Elifoot-style score boxes on desktop. Scoped to ≥641px so the mobile cards keep their
+   full-width 44px tap targets (base rules). */
+@media (min-width: 641px) {
+    [data-theme="elifoot"] .pick-num { width: 2rem; }
+    [data-theme="elifoot"] .pick-input { width: 2rem; padding: 1px; }
+}
+
+/* First-to-score selector → a small gray Win98 box that lights up yellow when picked (replaces the
+   dimmed/greyscale ball). The static span on locked rows uses the same .fs-on yellow. */
+[data-theme="elifoot"] .fs-pick {
+    filter: grayscale(1);   /* monochrome ball — drop the emoji's blue tint */
+    opacity: 0.65;          /* dim when not picked; the box colour carries the state */
+    background: var(--ef-face);
+    border: 1px solid #000;
+    padding: 0 3px;
+}
+[data-theme="elifoot"] .fs-pick.fs-on {
+    filter: none;           /* show the box bright yellow — grayscale would dull it to gray */
+    opacity: 1;
+    background: var(--ef-yellow);
+}
+
+/* Status pills (open/locked/points) read as plain bold text on the green desktop, not pale chips. */
+[data-theme="elifoot"] .pick-status .badge {
+    background: transparent;
+    border: none;
+    color: #fff;
+    padding: 0;
+}
+
+/* Group cards keep white list-box bodies under a navy title bar. */
+[data-theme="elifoot"] .group-card h3 {
+    background: var(--ef-navy);
+    color: #fff;
+    margin: -0.75rem -0.75rem 0.5rem;
+    padding: 2px 6px;
+}
+
+/* Leaderboard → navy header row over the white table. */
+[data-theme="elifoot"] .leaderboard-table th { background: var(--ef-navy); color: #fff; }
+
+/* Champion banner → transparent on green, all-yellow text. */
+[data-theme="elifoot"] .champion-banner { background: transparent; color: var(--ef-yellow); }
+[data-theme="elifoot"] .champion-banner strong { color: var(--ef-yellow); }
+
+/* Landing/admin forms sit on the green desktop → light label + hint text for contrast. */
+[data-theme="elifoot"] form.stack label { color: #fff; }
+[data-theme="elifoot"] .hint { color: #e9efe9; }
+
+/* Mobile: matches reflow into white cards, so the on-green text colours above would be
+   invisible there — restore dark text inside the cards. */
+@media (max-width: 640px) {
+    [data-theme="elifoot"] .pick-prefix,
+    [data-theme="elifoot"] .pick-dash,
+    [data-theme="elifoot"] .pick-boost { color: var(--fg); }
+    [data-theme="elifoot"] .pick-time,
+    [data-theme="elifoot"] .pick-actual { color: var(--muted); }
+}

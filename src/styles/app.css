@@ -27,6 +27,15 @@ body {
     padding: 1rem 1.5rem;
 }
 
+/* Landing-page top row: title on the left, theme toggle on the right. */
+.entry-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
 header.app-header {
     border-bottom: 1px solid var(--border);
     background: white;
@@ -48,6 +57,9 @@ nav.tabs a {
     text-decoration: none;
 }
 nav.tabs a.active { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+
+.theme-toggle { display: inline-flex; align-items: center; gap: 0.35rem; }
+.theme-toggle select { padding: 0.25rem 0.4rem; }
 
 button, input[type="text"], input[type="password"], input[type="number"], input[type="datetime-local"], select {
     font: inherit;
@@ -239,10 +251,16 @@ form.stack label { display: flex; flex-direction: column; gap: 0.25rem; font-siz
 .day-card { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; }
 .day-card h3 { margin: 0 0 0.5rem; font-size: 0.9rem; color: var(--muted); font-weight: 600; }
 
+/* Champion pick banner (classed so themes can restyle it without inline-style !important fights). */
+.champion-banner { background: var(--accent-soft); padding: 0.75rem; border-radius: 6px; margin: 1rem 0; }
+
 .picks-grid {
     display: grid;
-    /* Fixed-width action column so "Save"/"Saving…"/"Saved ✓" don't reflow the other columns. */
-    grid-template-columns: auto auto minmax(3rem, 1fr) auto auto auto minmax(3rem, 1fr) 6rem auto;
+    /* Each day-card is its own grid, so the status + group columns must be FIXED width — otherwise a
+       day with only completed matches (short "+5"/"-4" points) sizes them narrower than a day with
+       "open"/"locked" tags, and the country/score boxes won't line up down the page. The action
+       column is fixed too so "Save"/"Saving…"/"Saved ✓" don't reflow the row. */
+    grid-template-columns: 3.5rem 4.5rem minmax(3rem, 1fr) auto auto auto minmax(3rem, 1fr) 6rem auto;
     align-items: center;
     gap: 0.4rem 0.6rem;
 }
@@ -270,14 +288,16 @@ button.fs-pick { cursor: pointer; }
 .fs-mark.ok { color: var(--good); }
 .fs-mark.no { color: var(--bad); }
 
-/* Per-match result feedback on a scored My-picks row (BL6): the actual goals sit directly under
-   each score input. The cell is fixed-width and the input fills it, so the (centered) actual lines
-   up under the (centered) prediction. Top-align the stacked score cells (and their dash) so the
-   inputs sit above their actuals; open rows have no actual, so their dash stays grid-centered with
-   the inputs. */
-.pick-num { display: inline-flex; flex-direction: column; align-items: center; align-self: start; width: 4rem; }
+/* Per-match result feedback on a completed My-picks row (BL6): the actual goals sit directly under
+   each score input. Everything stays center-aligned so the country boxes and score boxes share one
+   line; when an actual hangs below the input, a matching spacer above keeps the input centered on
+   that line — so completed rows align with open ones. */
+.pick-num { display: inline-flex; flex-direction: column; align-items: center; align-self: center; width: 4rem; }
 .pick-num .pick-input { width: 100%; }
-.pick-dash-stacked { align-self: start; }
+/* Spacer balances the stacked actual (its 0.3rem margin-top + ~0.8rem height) so the input stays
+   on the row's main line. Only completed cells (those with an actual) get it. */
+.pick-num:has(.pick-actual)::before { content: ''; display: block; height: 1.1rem; }
+.pick-dash-stacked { align-self: center; }
 .pick-actual { font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-top: 0.3rem; line-height: 1; }
 
 /* Hide the number-input spin arrows: they push the typed number off-centre (so the actual goal

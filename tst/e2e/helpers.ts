@@ -106,7 +106,7 @@ export async function enterGameUi(
     playerPassword = 'player-pw',
 ): Promise<void> {
     await page.goto('/');
-    await page.getByRole('combobox').selectOption({ label: gameName });
+    await page.getByLabel('Game', { exact: true }).selectOption({ label: gameName });
     await page.getByLabel('Display name', { exact: true }).fill(displayName);
     await page.getByLabel('Your password', { exact: true }).fill(playerPassword);
     await page.getByLabel('Game password', { exact: true }).fill(gamePassword);
