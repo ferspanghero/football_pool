@@ -4,6 +4,8 @@ import {
     scoreMatchWeighted,
     scoreFirstScorer,
     scorePrediction,
+    breakdownMatch,
+    SCORE_COMPONENTS,
     FIRST_SCORER_BONUS,
     computeLeaderboard,
     determineChampion,
@@ -308,12 +310,12 @@ describe('computeLeaderboard', () => {
         expect(board[0]!.totalPoints).toBe(42);
     });
 
-    test('tracks exact, outcome, and goal-diff counts independently', () => {
-        // Arrange — Alice: G_A_1 exact (|GD| right), G_B_1 outcome-only (4-1 |GD|=3 vs 2-1 |GD|=1, wrong)
+    test('tracks exact, outcome, and goal-diff points independently', () => {
+        // Arrange — Alice: G_A_1 exact (7, all three categories), G_B_1 outcome-only (3, outcome only)
         const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
         const predictions = [
-            { playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 } }, // exact → outcome + |GD|
-            { playerId: 1, matchId: 'G_B_1', score: { home: 4, away: 1 } }, // outcome only, |GD| wrong
+            { playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 } }, // exact → 7 in all three
+            { playerId: 1, matchId: 'G_B_1', score: { home: 4, away: 1 } }, // outcome only → 3 in outcome
         ];
         const results = new Map([
             ['G_A_1', { home: 2, away: 1 }],
@@ -323,10 +325,35 @@ describe('computeLeaderboard', () => {
         // Act
         const board = computeLeaderboard(players, predictions, results, matchesById, undefined);
 
-        // Assert
-        expect(board[0]!.exactScoreCount).toBe(1);
-        expect(board[0]!.correctOutcomeCount).toBe(2);
-        expect(board[0]!.correctGoalDiffCount).toBe(1);
+        // Assert — additive split: G_A_1 exact = outcome 3 + goalDiff 2 + exact 2; G_B_1 = outcome 3
+        expect(board[0]!.correctOutcomePoints).toBe(6);
+        expect(board[0]!.correctGoalDiffPoints).toBe(2);
+        expect(board[0]!.exactScorePoints).toBe(2);
+    });
+
+    test('the breakdown columns plus first-scorer reconcile with the total (no champion bonus)', () => {
+        // Arrange — a mix of exact, outcome-only, goal-diff-only, and a first-scorer pick
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [
+            { playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'HOME' as const }, // exact (7) + FS (2)
+            { playerId: 1, matchId: 'G_B_1', score: { home: 4, away: 1 } }, // outcome only (3)
+            { playerId: 1, matchId: 'G_C_1', score: { home: 0, away: 1 } }, // goal-diff only (2)
+        ];
+        const results = new Map([
+            ['G_A_1', { home: 2, away: 1 }],
+            ['G_B_1', { home: 2, away: 1 }],
+            ['G_C_1', { home: 1, away: 0 }],
+        ]);
+        const firstScorers = new Map([['G_A_1', 'HOME' as const]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined, firstScorers);
+        const row = board[0]!;
+
+        // Assert — the four contribution columns sum exactly to the displayed total
+        expect(row.exactScorePoints + row.correctOutcomePoints + row.correctGoalDiffPoints + row.firstScorerPoints).toBe(
+            row.totalPoints,
+        );
     });
 
     test('CHAMPION_BONUS is 100', () => {
@@ -454,7 +481,7 @@ describe('computeLeaderboard', () => {
         expect(board[0]!.totalPoints).toBe(0);
     });
 
-    test('does not increment correctOutcomeCount when the predicted outcome is wrong', () => {
+    test('attributes no outcome points when the predicted outcome is wrong', () => {
         // Arrange — predict away win (1-2), actual home win (2-1)
         const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
         const predictions = [{ playerId: 1, matchId: 'G_A_1', score: { home: 1, away: 2 } }];
@@ -463,14 +490,14 @@ describe('computeLeaderboard', () => {
         // Act
         const board = computeLeaderboard(players, predictions, results, matchesById, undefined);
 
-        // Assert — only |GD| matches → 2 pts, no exact, no outcome, but goal-diff counts
+        // Assert — only |GD| matches → 2 pts go to the goal-diff column, none to exact/outcome
         expect(board[0]!.totalPoints).toBe(2);
-        expect(board[0]!.correctOutcomeCount).toBe(0);
-        expect(board[0]!.exactScoreCount).toBe(0);
-        expect(board[0]!.correctGoalDiffCount).toBe(1);
+        expect(board[0]!.correctOutcomePoints).toBe(0);
+        expect(board[0]!.exactScorePoints).toBe(0);
+        expect(board[0]!.correctGoalDiffPoints).toBe(2);
     });
 
-    test('tiebreaks by correctOutcomeCount when total and exact are tied', () => {
+    test('tiebreaks by correctOutcomePoints when total and exact-score points are tied', () => {
         // Arrange — both players reach 8 points with 0 exact scores, differing only in outcome count:
         //   Alice: 4 |GD|-only predictions (2 pts each), 0 correct outcomes
         //   Bob:   1 outcome+GD (5 pts) + 1 outcome-only (3 pts), 2 correct outcomes
@@ -508,6 +535,28 @@ describe('computeLeaderboard', () => {
         expect(board[0]!.totalPoints).toBe(8);
         expect(board[1]!.totalPoints).toBe(8);
         expect(board.map((r) => r.displayName)).toEqual(['Bob', 'Alice']);
+    });
+});
+
+describe('breakdownMatch', () => {
+    test.each([
+        { label: 'exact', pred: { home: 2, away: 1 }, actual: { home: 2, away: 1 }, expected: { outcome: 3, goalDiff: 2, exact: 2 } },
+        { label: 'outcome + goal diff', pred: { home: 3, away: 2 }, actual: { home: 2, away: 1 }, expected: { outcome: 3, goalDiff: 2, exact: 0 } },
+        { label: 'outcome only', pred: { home: 4, away: 1 }, actual: { home: 2, away: 1 }, expected: { outcome: 3, goalDiff: 0, exact: 0 } },
+        { label: 'goal diff only (wrong outcome)', pred: { home: 1, away: 2 }, actual: { home: 2, away: 1 }, expected: { outcome: 0, goalDiff: 2, exact: 0 } },
+        { label: 'nothing right', pred: { home: 0, away: 3 }, actual: { home: 2, away: 1 }, expected: { outcome: 0, goalDiff: 0, exact: 0 } },
+    ])('splits a $label prediction into additive components that sum to scoreMatch', ({ pred, actual, expected }) => {
+        // Arrange, Act
+        const parts = breakdownMatch(pred, actual);
+
+        // Assert
+        expect(parts).toEqual(expected);
+        expect(parts.outcome + parts.goalDiff + parts.exact).toBe(scoreMatch(pred, actual));
+    });
+
+    test('the components sum to a perfect (exact) score', () => {
+        // Arrange, Act, Assert
+        expect(SCORE_COMPONENTS.OUTCOME + SCORE_COMPONENTS.GOAL_DIFF + SCORE_COMPONENTS.EXACT).toBe(7);
     });
 });
 

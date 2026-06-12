@@ -18,6 +18,7 @@ import { authRoutes } from '@api/routes/auth';
 import { predictionRoutes } from '@api/routes/predictions';
 import { leaderboardRoutes } from '@api/routes/leaderboard';
 import { adminRoutes } from '@api/routes/admin';
+import { mcpRoutes } from '@api/routes/mcp';
 import type { AppEnv } from '@api/types';
 
 export function buildApp(injectedClock?: ClockProvider): Hono<AppEnv> {
@@ -80,6 +81,7 @@ export function buildApp(injectedClock?: ClockProvider): Hono<AppEnv> {
     app.route('/api', predictionRoutes);
     app.route('/api', leaderboardRoutes);
     app.route('/api', adminRoutes);
+    app.route('/api', mcpRoutes);
 
     // Global safety net for *uncaught* throws (a repo bare-throw, a D1 driver error). Without it
     // Hono returns a plain-text 500 that breaks the API's `{ error: { code, message } }` contract,

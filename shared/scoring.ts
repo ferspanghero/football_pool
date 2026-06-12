@@ -98,6 +98,40 @@ export function scoreMatchWeighted(prediction: Score, actual: Score, phase: Phas
     return scoreMatch(prediction, actual) * phaseById(phase).multiplier;
 }
 
+/**
+ * Additive base-score components (unweighted): the three non-overlapping reasons a prediction
+ * scores. `OUTCOME + GOAL_DIFF + EXACT === POINTS.EXACT`, so a perfect prediction earns all three
+ * and a leaderboard can show a per-reason breakdown that reconciles with the total.
+ */
+export const SCORE_COMPONENTS = {
+    /** Right winner or draw. */
+    OUTCOME: POINTS.OUTCOME_ONLY,
+    /** Right goal-difference magnitude. */
+    GOAL_DIFF: POINTS.GD_ONLY,
+    /** Exact score, on top of a right outcome + goal difference. */
+    EXACT: POINTS.EXACT - POINTS.OUTCOME_AND_GD,
+} as const;
+
+/** A prediction's base points split into the reasons it scored. The three sum to `scoreMatch`. */
+export type ScoreBreakdown = { outcome: number; goalDiff: number; exact: number };
+
+/**
+ * Break a prediction's base match points into its non-overlapping components — getting the outcome,
+ * the goal difference, and the exact score. The three always sum to `scoreMatch(prediction, actual)`,
+ * so summing them across a player's matches (each phase-weighted and boosted) reconstructs the base
+ * total. Drives the leaderboard's per-category points columns.
+ */
+export function breakdownMatch(prediction: Score, actual: Score): ScoreBreakdown {
+    const predDiff = prediction.home - prediction.away;
+    const actDiff = actual.home - actual.away;
+
+    return {
+        outcome: Math.sign(predDiff) === Math.sign(actDiff) ? SCORE_COMPONENTS.OUTCOME : 0,
+        goalDiff: Math.abs(predDiff) === Math.abs(actDiff) ? SCORE_COMPONENTS.GOAL_DIFF : 0,
+        exact: prediction.home === actual.home && prediction.away === actual.away ? SCORE_COMPONENTS.EXACT : 0,
+    };
+}
+
 /** A single prediction's contribution to a match: total points, the first-scorer component (each
  * already doubled when the match is boosted, so they reconcile with the total), and the raw
  * (unweighted) base tier. Shared by `computeLeaderboard` and the My-picks per-row feedback so the
@@ -133,8 +167,8 @@ type MatchPhaseLookup = ReadonlyMap<MatchId, Pick<Match, 'id' | 'phase'>>;
  *
  * Returns one row per player, sorted by:
  *   1. `totalPoints` (descending)
- *   2. `exactScoreCount` (descending) — tiebreak
- *   3. `correctOutcomeCount` (descending) — tiebreak
+ *   2. `exactScorePoints` (descending) — tiebreak
+ *   3. `correctOutcomePoints` (descending) — tiebreak
  *   4. `displayName` (ascending, case-insensitive) — final tiebreak
  *
  * Predictions whose match has no recorded result are skipped silently. The champion bonus
@@ -144,7 +178,9 @@ type MatchPhaseLookup = ReadonlyMap<MatchId, Pick<Match, 'id' | 'phase'>>;
  * (`scoreFirstScorer`) when both the player's pick and the recorded actual (`firstScorerActuals`)
  * are present and agree. A match a player boosted for its phase (`boostsByPlayer`) has its whole
  * contribution doubled (BL7). The flat champion bonus is separate and never boosted. The
- * tiebreaker counts (exact/outcome/goal-diff) track score accuracy only and ignore all bonuses.
+ * per-category breakdown columns (exact/outcome/goal-diff points, via `breakdownMatch`) split the
+ * weighted base-score contribution into non-overlapping parts that, with `firstScorerPoints`,
+ * reconcile with `totalPoints` (only the champion bonus is outside the columns).
  */
 export function computeLeaderboard(
     players: ReadonlyArray<Player>,
@@ -164,9 +200,9 @@ export function computeLeaderboard(
 
     const rows: LeaderboardRow[] = players.map((player) => {
         let totalPoints = 0;
-        let exactScoreCount = 0;
-        let correctOutcomeCount = 0;
-        let correctGoalDiffCount = 0;
+        let exactScorePoints = 0;
+        let correctOutcomePoints = 0;
+        let correctGoalDiffPoints = 0;
         let firstScorerPoints = 0;
         const playerPredictions = byPlayer.get(player.id) ?? [];
 
@@ -188,12 +224,14 @@ export function computeLeaderboard(
             );
             totalPoints += scored.points;
             firstScorerPoints += scored.firstScorerPoints;
-            if (scored.base === POINTS.EXACT) exactScoreCount++;
-
-            const predDiff = pred.score.home - pred.score.away;
-            const actDiff = actual.home - actual.away;
-            if (Math.sign(predDiff) === Math.sign(actDiff)) correctOutcomeCount++;
-            if (Math.abs(predDiff) === Math.abs(actDiff)) correctGoalDiffCount++;
+            // Split the base match points into the three non-overlapping reasons the prediction
+            // scored, each phase-weighted and boosted so the columns + first-scorer reconcile with
+            // the total (a perfect call earns all three).
+            const weight = phaseById(match.phase).multiplier * (boosted ? 2 : 1);
+            const parts = breakdownMatch(pred.score, actual);
+            exactScorePoints += parts.exact * weight;
+            correctOutcomePoints += parts.outcome * weight;
+            correctGoalDiffPoints += parts.goalDiff * weight;
         }
 
         if (actualChampionTeamId !== undefined && player.championTeamId === actualChampionTeamId) {
@@ -204,17 +242,17 @@ export function computeLeaderboard(
             playerId: player.id,
             displayName: player.displayName,
             totalPoints,
-            exactScoreCount,
-            correctOutcomeCount,
-            correctGoalDiffCount,
+            exactScorePoints,
+            correctOutcomePoints,
+            correctGoalDiffPoints,
             firstScorerPoints,
         };
     });
 
     rows.sort((a, b) => {
         if (a.totalPoints !== b.totalPoints) return b.totalPoints - a.totalPoints;
-        if (a.exactScoreCount !== b.exactScoreCount) return b.exactScoreCount - a.exactScoreCount;
-        if (a.correctOutcomeCount !== b.correctOutcomeCount) return b.correctOutcomeCount - a.correctOutcomeCount;
+        if (a.exactScorePoints !== b.exactScorePoints) return b.exactScorePoints - a.exactScorePoints;
+        if (a.correctOutcomePoints !== b.correctOutcomePoints) return b.correctOutcomePoints - a.correctOutcomePoints;
         return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' });
     });
 

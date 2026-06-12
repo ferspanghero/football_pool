@@ -3,12 +3,24 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api, ApiError } from '../api-client';
-import { POINTS, CHAMPION_BONUS, FIRST_SCORER_BONUS } from '@shared/scoring';
+import { signedPoints } from '../lib/points';
+import { POINTS, SCORE_COMPONENTS, CHAMPION_BONUS, FIRST_SCORER_BONUS } from '@shared/scoring';
 import { PHASES } from '@shared/phases';
 import type { LeaderboardRow } from '@shared/types';
 
 const MIN_MULTIPLIER = Math.min(...PHASES.map((p) => p.multiplier));
 const MAX_MULTIPLIER = Math.max(...PHASES.map((p) => p.multiplier));
+
+/** A points cell with an explicit sign and positive/negative colouring. */
+function PointsCell({ label, value }: { label: string; value: number }) {
+    const { text, tone } = signedPoints(value);
+
+    return (
+        <td data-label={label} className={`pts pts-${tone}`}>
+            {text}
+        </td>
+    );
+}
 
 export function Leaderboard() {
     const { gameId } = useParams();
@@ -28,17 +40,19 @@ export function Leaderboard() {
 
             <section className="leaderboard-rules">
                 <strong>How points work</strong>
+                <p>
+                    Each score prediction earns points for what it gets right. The leaderboard splits these into the
+                    columns below — together with First Scorer and the Champion bonus, they add up to your total:
+                </p>
                 <ul>
-                    <li>Exact score: <b>{POINTS.EXACT}</b></li>
-                    <li>Right result + goal difference: <b>{POINTS.OUTCOME_AND_GD}</b></li>
-                    <li>Right result only: <b>{POINTS.OUTCOME_ONLY}</b></li>
-                    <li>Right goal difference only: <b>{POINTS.GD_ONLY}</b></li>
-                    <li>Nothing right: <b>{POINTS.WRONG}</b></li>
+                    <li><b>Right outcome</b> (winner or draw): <b>+{SCORE_COMPONENTS.OUTCOME}</b></li>
+                    <li><b>Right goal difference</b>: <b>+{SCORE_COMPONENTS.GOAL_DIFF}</b></li>
+                    <li><b>Exact score</b>: <b>+{SCORE_COMPONENTS.EXACT}</b></li>
                 </ul>
                 <p>
-                    Each match's points are multiplied by the round (group stage ×{MIN_MULTIPLIER}, rising to ×
-                    {MAX_MULTIPLIER} for the final). Knockout matches are scored on the 90-minute result. Score
-                    predictions lock at each match's kickoff.
+                    A perfect prediction earns all three (<b>+{POINTS.EXACT}</b>). Each part is multiplied by the round
+                    (group stage ×{MIN_MULTIPLIER}, rising to ×{MAX_MULTIPLIER} for the final); knockout matches are
+                    scored on the 90-minute result. Predictions lock at each match's kickoff.
                 </p>
                 <strong style={{ display: 'block', marginTop: '0.8rem' }}>Optional points</strong>
                 <ul>
@@ -66,9 +80,9 @@ export function Leaderboard() {
                         <th>Rank</th>
                         <th>Player</th>
                         <th>Points</th>
-                        <th>Exact Predictions</th>
                         <th>Right Outcome</th>
                         <th>Right Goal Diff</th>
+                        <th>Exact Score</th>
                         <th>First Scorer</th>
                     </tr>
                 </thead>
@@ -78,10 +92,10 @@ export function Leaderboard() {
                             <td data-label="Rank">{i + 1}</td>
                             <td data-label="Player">{r.displayName}</td>
                             <td data-label="Points">{r.totalPoints}</td>
-                            <td data-label="Exact Predictions">{r.exactScoreCount}</td>
-                            <td data-label="Right Outcome">{r.correctOutcomeCount}</td>
-                            <td data-label="Right Goal Diff">{r.correctGoalDiffCount}</td>
-                            <td data-label="First Scorer">{r.firstScorerPoints}</td>
+                            <PointsCell label="Right Outcome" value={r.correctOutcomePoints} />
+                            <PointsCell label="Right Goal Diff" value={r.correctGoalDiffPoints} />
+                            <PointsCell label="Exact Score" value={r.exactScorePoints} />
+                            <PointsCell label="First Scorer" value={r.firstScorerPoints} />
                         </tr>
                     ))}
                 </tbody>

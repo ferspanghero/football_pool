@@ -69,6 +69,7 @@ export const api = {
     saveBoost: (phaseId: PhaseId, matchId: MatchId | null) =>
         request<{ ok: true }>(`/api/me/boosts/${phaseId}`, { method: 'PUT', body: { matchId } }),
     leaderboard: (gameId: number) => request<{ rows: LeaderboardRow[] }>(`/api/games/${gameId}/leaderboard`),
+    createMcpToken: () => request<{ token: string; expiresAt: string }>('/api/mcp/token', { method: 'POST' }),
     matchPredictions: (gameId: number, matchId: MatchId) =>
         request<MatchPredictionsPayload>(`/api/games/${gameId}/predictions/${matchId}`),
     adminLogin: (password: string) =>

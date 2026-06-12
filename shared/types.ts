@@ -83,15 +83,23 @@ export type Prediction = {
     firstScorer?: FirstScorer | undefined;
 };
 
-/** One row of the per-game leaderboard, sorted by descending `totalPoints`. */
+/**
+ * One row of the per-game leaderboard, sorted by descending `totalPoints`.
+ *
+ * The `*Points` breakdown columns are the weighted + boosted base-score points split into the three
+ * **non-overlapping** reasons a prediction scored (see `breakdownMatch`). They plus `firstScorerPoints`
+ * reconcile with `totalPoints` (the only extra in the total is the flat champion bonus).
+ */
 export type LeaderboardRow = {
     playerId: number;
     displayName: string;
     totalPoints: number;
-    exactScoreCount: number;
-    correctOutcomeCount: number;
-    /** Predictions whose absolute goal difference matched the actual result. */
-    correctGoalDiffCount: number;
+    /** Points earned specifically for nailing the exact score (on top of outcome + goal diff). */
+    exactScorePoints: number;
+    /** Points earned for predicting the right outcome (winner or draw). */
+    correctOutcomePoints: number;
+    /** Points earned for predicting the right goal-difference magnitude. */
+    correctGoalDiffPoints: number;
     /** Net first-to-score points (BL6): the sum of +/− bonuses, with boosted matches counted
      * doubled so this reconciles with `totalPoints`. */
     firstScorerPoints: number;

@@ -9,6 +9,7 @@ import { Groups } from './routes/Groups';
 import { Knockouts } from './routes/Knockouts';
 import { MatchDetail } from './routes/MatchDetail';
 import { Leaderboard } from './routes/Leaderboard';
+import { Connect } from './routes/Connect';
 import { Admin } from './routes/Admin';
 
 export function App() {
@@ -22,6 +23,7 @@ export function App() {
                         <Route path="groups" element={<Groups />} />
                         <Route path="knockouts" element={<Knockouts />} />
                         <Route path="leaderboard" element={<Leaderboard />} />
+                        <Route path="connect" element={<Connect />} />
                         <Route path="match/:matchId" element={<MatchDetail />} />
                     </Route>
                     <Route path="/admin/*" element={<Admin />} />

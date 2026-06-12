@@ -15,6 +15,10 @@ admin creates game → players predict → results sync (or admin entry) → lea
 
 Players can switch the interface between the default look and a set of opt-in retro themes; the choice is remembered in the browser.
 
+## Predict from your LLM
+
+Players can also make their picks by chatting with an LLM instead of using the web UI. The same Worker exposes a [Model Context Protocol](https://modelcontextprotocol.io) server at `/api/mcp` with tools to read fixtures, standings, and your entry and to submit predictions, champion, and boosts. From the **Connect LLM** tab, generate a token and paste the one-line `claude mcp add` command into [Claude Code](https://claude.com/claude-code) — then ask it to make your predictions. The token reuses your signed session (scoped to you, in that game, with a 60-day expiry), and every write enforces the same kickoff locks as the web UI. See `project_files/v3/plan.md`.
+
 ## Scoring
 
 Per-match base points:
@@ -39,7 +43,7 @@ Two optional extras can add to — or subtract from — a match's points:
 | Layer | Choice |
 |---|---|
 | Frontend | Vite + React + TypeScript (static SPA) |
-| Backend | Cloudflare Worker (Hono), REST API under `/api` |
+| Backend | Cloudflare Worker (Hono), REST API + MCP server under `/api` |
 | Database | Cloudflare D1 (SQLite) |
 | Hosting | A single Cloudflare Worker serves the SPA (as static assets) and the API (free tier) |
 
@@ -96,7 +100,7 @@ npx playwright test     # browser end-to-end tests
 
 ```
 src/             # Frontend (React) — routes, api-client
-api/             # Worker — routes, auth, clock, repositories, result-feed providers, scheduled sync
+api/             # Worker — routes, auth, clock, repositories, result-feed providers, scheduled sync, MCP server
 shared/          # Pure logic shared by client + worker (scoring, phases, time, types)
 data/            # Static tournament data
 migrations/      # D1 schema
@@ -112,7 +116,7 @@ npm run test:coverage   # with coverage gate
 npx playwright test     # Playwright browser e2e
 ```
 
-End-to-end test scenarios (preconditions, steps, expected outcomes) are documented in `project_files/v1/plan.md` under "Test Scenarios" and are the basis the Playwright specs implement against.
+End-to-end test scenarios (preconditions, steps, expected outcomes) are documented in the versioned plan docs (`project_files/v*/plan.md`) under "Test Scenarios" and are the basis the Playwright specs implement against.
 
 ## Deployment
 

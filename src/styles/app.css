@@ -155,6 +155,37 @@ form.stack label { display: flex; flex-direction: column; gap: 0.25rem; font-siz
 .leaderboard-rules ul { margin: 0.4rem 0; padding-left: 1.2rem; }
 .leaderboard-rules p { margin: 0.4rem 0 0; color: var(--muted); }
 
+/* Connect-your-LLM panel — themed via CSS variables so retro skins inherit it. */
+.connect-panel {
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem;
+    font-size: 0.9rem;
+}
+.connect-panel > p { margin: 0 0 0.8rem; color: var(--muted); }
+.connect-result { margin-top: 1rem; }
+.connect-result pre {
+    background: var(--bg);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.8rem;
+    margin: 0 0 0.6rem;
+}
+.connect-actions { display: flex; align-items: center; gap: 0.8rem; }
+.connect-expiry { color: var(--muted); font-size: 0.8rem; }
+
+/* Signed points cells — green for gains, red for losses, muted for zero. Themed via variables. */
+.pts { font-variant-numeric: tabular-nums; }
+.pts-pos { color: var(--good); }
+.pts-neg { color: var(--bad); }
+.pts-zero { color: var(--muted); }
+
 .leaderboard-table {
     width: 100%;
     border-collapse: collapse;

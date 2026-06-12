@@ -86,6 +86,9 @@ export function GameLayout() {
                         <NavLink to={`${base}/leaderboard`} className={({ isActive }) => (isActive ? 'active' : '')}>
                             Leaderboard
                         </NavLink>
+                        <NavLink to={`${base}/connect`} className={({ isActive }) => (isActive ? 'active' : '')}>
+                            Connect LLM
+                        </NavLink>
                     </nav>
                     <ThemeToggle />
                     <button className="secondary" onClick={onLogout} type="button">
