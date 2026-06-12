@@ -12,6 +12,7 @@ import { Hono } from 'hono';
 import { FixedClockProvider, WallClockProvider, type ClockProvider, type ClockMode } from '@api/clock';
 import { requireAdmin } from '@api/middleware';
 import { readJson } from '@api/http';
+import { log } from '@api/log';
 import { publicRoutes } from '@api/routes/public';
 import { authRoutes } from '@api/routes/auth';
 import { predictionRoutes } from '@api/routes/predictions';
@@ -79,6 +80,18 @@ export function buildApp(injectedClock?: ClockProvider): Hono<AppEnv> {
     app.route('/api', predictionRoutes);
     app.route('/api', leaderboardRoutes);
     app.route('/api', adminRoutes);
+
+    // Global safety net for *uncaught* throws (a repo bare-throw, a D1 driver error). Without it
+    // Hono returns a plain-text 500 that breaks the API's `{ error: { code, message } }` contract,
+    // so the SPA would see `UNKNOWN`. Log the real cause server-side with request context (method +
+    // path only — never the body, which may carry passwords) and return the standard envelope with a
+    // GENERIC message, so internal detail never reaches the client.
+    app.onError((err, c) => {
+        // Hono only routes `Error` instances here (non-Errors are re-thrown), so `err.message` is safe.
+        log.error('unhandled request error', { method: c.req.method, path: c.req.path, err: err.message });
+
+        return c.json({ error: { code: 'INTERNAL', message: 'internal error' } }, 500);
+    });
 
     return app;
 }

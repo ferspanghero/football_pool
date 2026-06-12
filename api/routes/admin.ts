@@ -21,6 +21,7 @@ import { resultsRepo } from '@api/repos/results';
 import { requireAdmin } from '@api/middleware';
 import { isValidGoal, MAX_GOALS, parseFirstScorer, readJson } from '@api/http';
 import { runResultsSync } from '@api/scheduled';
+import { log } from '@api/log';
 import { MATCHES } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 import type { FirstScorer } from '@shared/types';
@@ -90,9 +91,12 @@ adminRoutes.get('/admin/results', requireAdmin, async (c) => {
 adminRoutes.post('/admin/sync-results', requireAdmin, async (c) => {
     try {
         const summary = await runResultsSync(c.env, { now: c.var.clock(), ignoreWindow: true });
+        log.info('manual results sync', { ...summary });
 
         return c.json({ summary });
-    } catch {
+    } catch (err) {
+        log.error('manual results sync failed', { err: String(err) });
+
         return c.json({ error: { code: 'INTERNAL', message: 'results sync failed' } }, 502);
     }
 });

@@ -5,7 +5,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { cleanup, createGame, enterGameUi, setServerClock, uniqueGameName } from './helpers';
+import { cleanup, createGame, enterGameUi, setClockBeforeTournament, uniqueGameName } from './helpers';
 
 const GAME_PW = 'autopw';
 
@@ -22,7 +22,7 @@ test.afterEach(async ({ browser }) => {
 test('E12 — My picks: a completed row auto-saves on leaving it, and Tab skips the Save button', async ({ browser }) => {
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E12');
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
 
@@ -58,7 +58,7 @@ test('E12 — My picks: a completed row auto-saves on leaving it, and Tab skips 
 test('E12 — Admin Results: a completed row auto-saves on leaving it, and Tab skips the Save button', async ({ browser }) => {
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E12admin');
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
 

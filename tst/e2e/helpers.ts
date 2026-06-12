@@ -63,6 +63,19 @@ export async function setServerClock(
     expect(res.ok()).toBeTruthy();
 }
 
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Pin the server clock to a day before the tournament's first kickoff, so every group-stage match
+ * is still open and the opener (G_A_1) is predictable. Specs that interact with an open early match
+ * must use this rather than REALTIME: once wall-clock time passes the opener's kickoff the match
+ * locks, its prediction inputs stop rendering, and those specs would fail purely on the calendar.
+ */
+export async function setClockBeforeTournament(page: Page): Promise<void> {
+    const { firstKickoffUtc } = await fetchTournament(page);
+    await setServerClock(page, { mode: 'FIXED', iso: shiftIso(firstKickoffUtc, -ONE_DAY_MS) });
+}
+
 /** Create a game via the admin API and return its id. */
 export async function createGame(page: Page, name: string, password: string): Promise<number> {
     await authAdmin(page);

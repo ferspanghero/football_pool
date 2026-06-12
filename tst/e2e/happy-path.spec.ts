@@ -7,6 +7,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { setClockBeforeTournament } from './helpers';
 
 const ADMIN_PW = 'admin-pass';
 const GAME_PW = 'e2epw';
@@ -16,6 +17,14 @@ test('admin creates game → player predicts → result recorded → leaderboard
     browser,
 }) => {
     const gameName = `E2E ${Date.now()}`;
+
+    // Pin the clock before the first kickoff so Round 1 (G_A_1) is open and predictable — otherwise
+    // once real time passes the opener this happy path locks before the player can save a pick. Use a
+    // throwaway context so the admin UI login below still sees a logged-out state (a pre-set admin
+    // session would skip the password form).
+    const clockCtx = await browser.newContext();
+    await setClockBeforeTournament(await clockCtx.newPage());
+    await clockCtx.close();
 
     // === Admin: log in and create a game ===
     const adminCtx = await browser.newContext();

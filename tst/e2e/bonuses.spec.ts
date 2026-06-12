@@ -1,13 +1,22 @@
 /**
  * E12/E13 — the two bonus features end-to-end (BL6 first-to-score, BL7 per-phase 2× boost).
  *
- * Both run on the real-time clock, which (pre-tournament) leaves Round 1 open so G_A_1 is
- * predictable and boostable. Each asserts the UI control persists across a reload and that the
- * choice changes the leaderboard total via the scoring engine. Specs self-clean their game.
+ * Both pin the clock before the first kickoff (so Round 1 is open and G_A_1 is predictable and
+ * boostable). Each asserts the UI control persists across a reload and that the choice changes the
+ * leaderboard total via the scoring engine. Specs self-clean their game.
  */
 
 import { test, expect } from '@playwright/test';
-import { cleanup, createGame, enterGameUi, fetchTournament, setServerClock, shiftIso, uniqueGameName } from './helpers';
+import {
+    cleanup,
+    createGame,
+    enterGameUi,
+    fetchTournament,
+    setClockBeforeTournament,
+    setServerClock,
+    shiftIso,
+    uniqueGameName,
+} from './helpers';
 
 const GAME_PW = 'bonuspw';
 
@@ -24,10 +33,10 @@ test.afterEach(async ({ browser }) => {
 });
 
 test('E12 — first-to-score pick persists and adds its bonus on the leaderboard', async ({ browser }) => {
-    // Arrange — a game on the real-time clock; Alice on the open Round 1.
+    // Arrange — clock pinned before kickoff; Alice on the open Round 1.
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E12');
     const gameId = await createGame(adminPage, gameName, GAME_PW);
     createdGameIds.push(gameId);
@@ -63,10 +72,10 @@ test('E12 — first-to-score pick persists and adds its bonus on the leaderboard
 });
 
 test('E13 — boosting a match doubles its points on the leaderboard', async ({ browser }) => {
-    // Arrange
+    // Arrange — clock pinned before kickoff; Alice on the open Round 1.
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E13');
     const gameId = await createGame(adminPage, gameName, GAME_PW);
     createdGameIds.push(gameId);
@@ -102,10 +111,10 @@ test('E13 — boosting a match doubles its points on the leaderboard', async ({ 
 });
 
 test('E14 — a scored My-picks row shows net points, the actual score, and a correct ⚽', async ({ browser }) => {
-    // Arrange — pre-kickoff, Alice predicts a wrong score (0-3) but the correct first scorer (home).
+    // Arrange — clock pinned before kickoff; Alice predicts a wrong score (0-3) but the correct first scorer (home).
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E14');
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
 

@@ -15,6 +15,7 @@
  * score rose. ESPN team abbreviations equal our `TeamId`s, so no code reconciliation is needed.
  */
 
+import { log } from '@api/log';
 import type { FirstScorer, Score, TeamId } from '@shared/types';
 
 const SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
@@ -166,7 +167,10 @@ export async function fetchFinishedResults(fetchFn: FetchLike, startDate: string
         let board: EspnScoreboard;
         try {
             board = (await (await fetchFn(`${SCOREBOARD_URL}?dates=${from}-${to}`)).json()) as EspnScoreboard;
-        } catch {
+        } catch (err) {
+            // Transient ESPN/network failure for this window — skip it; a later sync retries. Surface
+            // it so a feed outage or shape change is visible rather than silently swallowed.
+            log.warn('espn scoreboard fetch failed', { window: `${from}-${to}`, err: String(err) });
             continue;
         }
         for (const event of board.events ?? []) {
@@ -186,7 +190,10 @@ export async function fetchFinishedResults(fetchFn: FetchLike, startDate: string
             let summary: unknown;
             try {
                 summary = await (await fetchFn(`${SUMMARY_URL}?event=${base.id}`)).json();
-            } catch {
+            } catch (err) {
+                // Summary fetch failed — degrade per the rules above (regulation keeps its headline,
+                // extra-time is skipped). Surface it so a feed issue isn't invisible.
+                log.warn('espn summary fetch failed', { eventId: base.id, err: String(err) });
                 summary = undefined;
             }
             const resolved = summary ? extractFromSummary(summary) : null;

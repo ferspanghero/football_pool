@@ -23,4 +23,10 @@ export default [
             'no-console': ['warn', { allow: ['warn', 'error'] }],
         },
     },
+    {
+        // `api/log.ts` is the one sanctioned console boundary — it wraps `console.*` (incl. `console.log`
+        // for the `info` level) so the rest of the codebase never calls console directly.
+        files: ['api/log.ts'],
+        rules: { 'no-console': 'off' },
+    },
 ];

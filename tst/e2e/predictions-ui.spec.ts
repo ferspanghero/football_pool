@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { cleanup, createGame, enterGameUi, setServerClock, uniqueGameName } from './helpers';
+import { cleanup, createGame, enterGameUi, setClockBeforeTournament, uniqueGameName } from './helpers';
 
 const GAME_PW = 'predpw';
 
@@ -21,10 +21,10 @@ test.afterEach(async ({ browser }) => {
 });
 
 test('E9 — unsaved picks show empty inputs and a half-filled score cannot be saved', async ({ browser }) => {
-    // Arrange — a game on the real-time clock; My picks opens on Round 1 with G_A_1 still open.
+    // Arrange — clock pinned before kickoff; My picks opens on Round 1 with G_A_1 still open.
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E9');
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
 
@@ -55,10 +55,10 @@ test('E9 — unsaved picks show empty inputs and a half-filled score cannot be s
 });
 
 test('E10 — an unresolved knockout shows TBD and cannot be predicted', async ({ browser }) => {
-    // Arrange — a game; navigate My picks forward to the Round of 32 (still placeholder teams).
+    // Arrange — clock pinned before kickoff; navigate My picks forward to the Round of 32 (placeholders).
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E10');
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
 

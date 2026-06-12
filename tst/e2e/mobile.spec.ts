@@ -10,7 +10,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { cleanup, createGame, enterGameUi, setServerClock, uniqueGameName } from './helpers';
+import { cleanup, createGame, enterGameUi, setClockBeforeTournament, uniqueGameName } from './helpers';
 
 const GAME_PW = 'mobilepw';
 
@@ -33,10 +33,10 @@ async function hasNoHorizontalOverflow(page: Page): Promise<boolean> {
 }
 
 test('E11 — My picks and the leaderboard reflow on a phone viewport', async ({ browser }) => {
-    // Arrange — a game on the real-time clock so Round 1 opens with G_A_1 still predictable.
+    // Arrange — clock pinned before kickoff so Round 1 opens with G_A_1 still predictable.
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setClockBeforeTournament(adminPage);
     const gameName = uniqueGameName('E11');
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
 

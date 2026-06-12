@@ -7,6 +7,7 @@
 
 import { WallClockProvider } from '@api/clock';
 import { fetchFinishedResults } from '@api/providers/espn';
+import { log } from '@api/log';
 import { syncResults, type SyncSummary } from '@api/sync-results';
 import type { AppEnv } from '@api/types';
 
@@ -27,14 +28,16 @@ export async function runResultsSync(
 }
 
 /**
- * Run the hourly scheduled sync. A transient provider/network failure is logged rather than left to
- * surface as an uncaught scheduled rejection; the next hourly run retries. The run's effect is
- * observable via Workers invocation logs and the recorded results themselves.
+ * Run the hourly scheduled sync. Emits an `info` summary on success (the cron's liveness signal —
+ * it confirms the job ran and what it did, including a no-op `processed: 0`) and logs a transient
+ * provider/network failure as `error` rather than letting it surface as an uncaught scheduled
+ * rejection; the next hourly run retries.
  */
 export async function runScheduledSync(env: AppEnv['Bindings']): Promise<void> {
     try {
-        await runResultsSync(env, { now: WallClockProvider() });
+        const summary = await runResultsSync(env, { now: WallClockProvider() });
+        log.info('scheduled results sync', { ...summary });
     } catch (err) {
-        console.error('results sync failed:', err instanceof Error ? err.message : err);
+        log.error('scheduled results sync failed', { err: String(err) });
     }
 }
