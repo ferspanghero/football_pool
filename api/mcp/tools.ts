@@ -9,6 +9,7 @@
  */
 
 import { boostsRepo } from '@api/repos/boosts';
+import { gamesRepo } from '@api/repos/games';
 import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
 import { resultsRepo } from '@api/repos/results';
@@ -95,10 +96,11 @@ export const TOOLS: ToolEntry[] = [
     {
         name: 'get_my_entry',
         description:
-            'Get your identity and current entry: which player you are acting as (player id + display name) and your game id, plus your score predictions, champion pick, and per-phase boosts. Call this to confirm who you are before addressing the user by name.',
+            'Get your identity and current entry: which player you are acting as (player id + display name), your game id and game (room) name, plus your score predictions, champion pick, and per-phase boosts. Call this to confirm who you are and which room you are in before addressing the user by name.',
         inputSchema: NO_ARGS,
         handler: async (_args, ctx) => {
             const player = await playersRepo.findById(ctx.db, ctx.playerId);
+            const game = await gamesRepo.findById(ctx.db, ctx.gameId);
             const predictions = await predictionsRepo.findByPlayer(ctx.db, ctx.playerId);
             const boosts = await boostsRepo.findByPlayer(ctx.db, ctx.playerId);
 
@@ -106,6 +108,7 @@ export const TOOLS: ToolEntry[] = [
                 playerId: ctx.playerId,
                 displayName: player?.displayName ?? null,
                 gameId: ctx.gameId,
+                gameName: game?.name ?? null,
                 predictions: predictions.map((p) => ({
                     matchId: p.matchId,
                     homeGoals: p.score.home,

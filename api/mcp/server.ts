@@ -28,7 +28,7 @@ export const SERVER_INFO = { name: 'football-pool', version: '1.0.0' } as const;
  * from the server name or game id (which caused it to address users by the wrong name).
  */
 export const SERVER_INSTRUCTIONS =
-    'You are acting as one specific player in a FIFA World Cup prediction pool, identified by your connection token — not by the server name or game id. Before addressing the user by name or reporting their standing, call get_my_entry to learn your player id and display name, and use the `you` flag on get_leaderboard rows to find your own row and rank. Never infer the player from the server name.';
+    'You are acting as one specific player in a FIFA World Cup prediction pool, identified by your connection token — not by the server name or game id. Before addressing the user by name, reporting their standing, or saying which room/game you are acting in, call get_my_entry to learn your player id, display name, and game (room) name, and use the `you` flag on get_leaderboard rows to find your own row and rank. Never infer the player or room from the server name.';
 
 /** One HTTP-shaped outcome: 200 with a JSON-RPC body, or 202 with no body (a notification). */
 export type RpcOutcome = { status: 200 | 202; body: object | null };

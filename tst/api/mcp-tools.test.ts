@@ -114,12 +114,13 @@ describe('read tools', () => {
         const { db, app, token, game, player } = await setup();
 
         // Act
-        const entry = data<{ playerId: number; displayName: string; gameId: number }>(
+        const entry = data<{ playerId: number; displayName: string; gameId: number; gameName: string }>(
             await callTool(app, db, token, 'get_my_entry'),
         );
 
-        // Assert — the model can read its own identity authoritatively, not guess from the server name
-        expect(entry).toMatchObject({ playerId: player.id, displayName: 'Alice', gameId: game.id });
+        // Assert — the model can read its own identity authoritatively (name included so it can map
+        // the game/room without guessing from the server name)
+        expect(entry).toMatchObject({ playerId: player.id, displayName: 'Alice', gameId: game.id, gameName: 'G' });
     });
 
     test('get_my_entry tolerates a token whose player no longer exists', async () => {
@@ -132,6 +133,18 @@ describe('read tools', () => {
 
         // Assert — still reports the token's player id, display name null
         expect(entry).toMatchObject({ playerId: 999999, displayName: null });
+    });
+
+    test('get_my_entry reports a null gameName when the token game no longer exists', async () => {
+        // Arrange — a validly-signed token whose game id has no row (e.g. deleted after minting)
+        const { db, app, player } = await setup();
+        const orphan = await signCookie({ sub: player.id, gid: 999999, exp: Math.floor(BEFORE / 1000) + 1000 }, SECRET);
+
+        // Act
+        const entry = data<{ gameId: number; gameName: string | null }>(await callTool(app, db, orphan, 'get_my_entry'));
+
+        // Assert — still reports the token's game id, name null
+        expect(entry).toMatchObject({ gameId: 999999, gameName: null });
     });
 
     test('get_leaderboard returns rows scoped to the player game', async () => {
