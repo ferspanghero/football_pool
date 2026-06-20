@@ -19,15 +19,18 @@ test.afterEach(async ({ browser }) => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     await cleanup(page, createdGameIds);
+    // Restore real time so this spec's pinned clock never leaks into the next file.
+    await setServerClock(page, { mode: 'REALTIME' });
     await ctx.close();
     createdGameIds = [];
 });
 
 test('E7 — the same kickoff renders in each viewer\'s browser time zone', async ({ browser }) => {
-    // Arrange — one game on the real-time clock; My picks defaults to the first group round.
+    // Arrange — pin the clock before the tournament so My picks defaults to the first group round
+    // (which holds G_A_1) regardless of the real calendar date.
     const adminCtx = await browser.newContext();
     const adminPage = await adminCtx.newPage();
-    await setServerClock(adminPage, { mode: 'REALTIME' });
+    await setServerClock(adminPage, { mode: 'FIXED', iso: '2026-06-01T00:00:00Z' });
     const gameName = uniqueGameName('E7');
     createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
 

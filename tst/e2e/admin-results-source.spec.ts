@@ -17,6 +17,8 @@ test.afterEach(async ({ browser }) => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     await cleanup(page, createdGameIds);
+    // Restore real time so a pinned clock from any spec here never leaks into the next file.
+    await setServerClock(page, { mode: 'REALTIME' });
     await ctx.close();
     createdGameIds = [];
 });
@@ -25,12 +27,15 @@ test('E15 — recording a result shows a MANUAL provenance badge on its row', as
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
 
-    await setServerClock(page, { mode: 'REALTIME' });
+    // Pin to before the tournament so the panel's current-phase default lands on Round 1 (which
+    // holds G_C_1). Recording a result is clock-independent — this only steadies the default phase.
+    await setServerClock(page, { mode: 'FIXED', iso: '2026-06-01T00:00:00Z' });
     // createGame also mints the admin session this spec needs.
     const gameId = await createGame(page, uniqueGameName('E15'), 'adminpw');
     createdGameIds.push(gameId);
 
-    // Open the Results tab (GROUP_R1 is selected by default, which contains G_C_1).
+    // Open the Results tab — Round 1 is the current phase under the pinned clock, so it is the
+    // default selection and contains G_C_1.
     await page.goto('/admin');
     await page.getByRole('link', { name: 'Results' }).click();
     const row = page.locator('li', { hasText: MATCH_ID });
@@ -64,6 +69,25 @@ test('E16 — "Sync results now" runs the live sync and reports a summary', asyn
     // browser); assert it completes and surfaces a sync toast — success ("Synced …") or a clean error.
     await page.getByRole('button', { name: /sync results now/i }).click();
     await expect(page.locator('.toast')).toContainText(/sync/i, { timeout: 20000 });
+
+    await ctx.close();
+});
+
+test('E17 — the Results tab opens on the current phase, not always Round 1', async ({ browser }) => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+
+    // Pin the clock mid-tournament, to an instant whose current phase is the Round of 16 — decidedly
+    // not the old hardcoded GROUP_R1 default, so the assertion proves the new current-phase default.
+    await setServerClock(page, { mode: 'FIXED', iso: '2026-07-05T12:00:00Z' });
+    const gameId = await createGame(page, uniqueGameName('E17'), 'adminpw');
+    createdGameIds.push(gameId);
+
+    await page.goto('/admin');
+    await page.getByRole('link', { name: 'Results' }).click();
+
+    // The phase selector defaults to the current phase, derived from the authoritative server clock.
+    await expect(page.getByLabel('Phase')).toHaveValue('R16');
 
     await ctx.close();
 });

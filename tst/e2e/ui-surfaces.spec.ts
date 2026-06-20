@@ -5,6 +5,8 @@
  * E4c Match detail → hidden before kickoff, full prediction grid after (it gates on the
  * browser clock, so the post case drives both `page.clock` and the server clock past kickoff).
  * E4d Switch game → clears the session and returns to `/`.
+ * E4e Tab navigation → refetches the shared game context, so context-backed tabs stay fresh
+ * without a manual browser reload (F5).
  */
 
 import { test, expect } from '@playwright/test';
@@ -120,6 +122,39 @@ test('E4d — Switch game clears the session and returns to the entry screen', a
     await expect(playerPage.getByRole('heading', { name: 'FIFA 2026 Pool' })).toBeVisible();
     const me = await playerPage.request.get('/api/me');
     expect(me.status()).toBe(401);
+
+    await adminCtx.close();
+    await playerCtx.close();
+});
+
+test('E4e — switching tabs refetches the game context without a manual reload', async ({ browser }) => {
+    const adminCtx = await browser.newContext();
+    const adminPage = await adminCtx.newPage();
+    const playerCtx = await browser.newContext();
+    const playerPage = await playerCtx.newPage();
+
+    await setServerClock(adminPage, { mode: 'REALTIME' });
+    const gameName = uniqueGameName('E4e');
+    createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
+    await enterGameUi(playerPage, gameName, GAME_PW, 'Alice');
+    // The header (with the tabs) only renders once the initial context load resolves, so the next
+    // GET /api/me we await can only be the navigation-triggered refetch, not the initial load.
+    await expect(playerPage.getByRole('link', { name: 'My picks' })).toBeVisible();
+
+    // Switching to Leaderboard must re-fetch the shared game context (GET /api/me) so the
+    // context-backed tabs (picks/results) show fresh data without a manual browser reload.
+    const refetchOnLeaderboard = playerPage.waitForResponse(
+        (r) => new URL(r.url()).pathname === '/api/me' && r.request().method() === 'GET' && r.ok(),
+    );
+    await playerPage.getByRole('link', { name: 'Leaderboard' }).click();
+    await refetchOnLeaderboard;
+
+    // ...and switching back to My picks refetches again.
+    const refetchOnPicks = playerPage.waitForResponse(
+        (r) => new URL(r.url()).pathname === '/api/me' && r.request().method() === 'GET' && r.ok(),
+    );
+    await playerPage.getByRole('link', { name: 'My picks' }).click();
+    await refetchOnPicks;
 
     await adminCtx.close();
     await playerCtx.close();

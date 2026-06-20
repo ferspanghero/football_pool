@@ -1,7 +1,7 @@
 /** Layout for `/game/:gameId` — header tabs + outlet for child routes. */
 
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, type MePayload, type TournamentData } from '../api-client';
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -19,15 +19,19 @@ export type GameContextValue = {
 
 export function GameLayout() {
     const { gameId } = useParams();
+    const { pathname } = useLocation();
     const navigate = useNavigate();
     const [me, setMe] = useState<MePayload | undefined>();
     const [tournament, setTournament] = useState<TournamentData | undefined>();
     const [results, setResults] = useState<RecordedResults>(new Map());
     const [error, setError] = useState<string | undefined>();
 
-    const load = async () => {
+    // `shouldApply` lets the navigation effect discard a slow in-flight response once a newer
+    // navigation has superseded it, so the latest tab's data wins rather than the last to resolve.
+    const load = async (shouldApply: () => boolean = () => true) => {
         try {
             const [meRes, tour, res] = await Promise.all([api.me(), api.tournament(), api.results()]);
+            if (!shouldApply()) return;
             setMe(meRes);
             setTournament(tour);
             setResults(
@@ -36,6 +40,7 @@ export function GameLayout() {
                 ),
             );
         } catch (err) {
+            if (!shouldApply()) return;
             if (err instanceof ApiError && err.status === 401) {
                 navigate('/');
                 return;
@@ -44,9 +49,17 @@ export function GameLayout() {
         }
     };
 
+    // Re-fetch on every tab navigation (pathname change), not just when the game changes, so
+    // switching tabs shows fresh picks/results/standings without a manual browser reload. State is
+    // not cleared first, so an in-place refresh causes no skeleton flash. The `active` flag drops a
+    // stale response if the user navigates again before it resolves.
     useEffect(() => {
-        load();
-    }, [gameId]);
+        let active = true;
+        load(() => active);
+        return () => {
+            active = false;
+        };
+    }, [gameId, pathname]);
 
     const loading = !me || !tournament;
     const showSkeleton = useDelayedFlag(loading, 300);
@@ -97,7 +110,7 @@ export function GameLayout() {
                 </div>
             </header>
             <main className="container">
-                <Outlet context={{ me, tournament, results, refresh: load }} />
+                <Outlet context={{ me, tournament, results, refresh: () => load() }} />
             </main>
         </>
     );

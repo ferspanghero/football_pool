@@ -1,7 +1,7 @@
 /** Admin UI — login + tabs for games, results, and players. */
 
-import { useEffect, useState } from 'react';
-import { PHASES } from '@shared/phases';
+import { useEffect, useRef, useState } from 'react';
+import { buildPhaseGroups, currentPhaseIndex, PHASES } from '@shared/phases';
 import { api, ApiError, type GameSummary, type TournamentData } from '../api-client';
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
@@ -263,7 +263,11 @@ function AdminGames() {
 function AdminResults() {
     const { showToast } = useToast();
     const [tournament, setTournament] = useState<TournamentData | undefined>();
+    // Defaults to the current phase once the data loads; until then 'GROUP_R1' (the first phase) is a
+    // harmless placeholder. `phasePicked` guards the async default from overwriting an admin's own
+    // pick made during the in-flight load.
     const [selectedPhase, setSelectedPhase] = useState<string>('GROUP_R1');
+    const phasePicked = useRef(false);
     // Recorded scores as strings so an unrecorded match shows empty (not 0-0); seeded from saved
     // results and updated on save so a saved value survives switching phases away and back.
     type RecordedResult = { home: string; away: string; firstScorer: FirstScorer | null; source: ResultSource };
@@ -285,6 +289,12 @@ function AdminResults() {
             .then(([t, r]) => {
                 setTournament(t);
                 setScores(toScores(r.results));
+                // Default to the current phase (the one still in play), mirroring My-picks, rather
+                // than always opening on Round 1. Uses the authoritative server clock returned by
+                // the results endpoint so it agrees with the rest of the app (and the test clock).
+                const groups = buildPhaseGroups(t.matches);
+                const current = groups[currentPhaseIndex(groups, r.nowMs)];
+                if (current && !phasePicked.current) setSelectedPhase(current.phase.id);
             })
             .catch((err: unknown) => showToast('error', err instanceof Error ? err.message : 'load failed'));
     }, []);
@@ -317,7 +327,13 @@ function AdminResults() {
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <label>
                     Phase{' '}
-                    <select value={selectedPhase} onChange={(e) => setSelectedPhase(e.target.value)}>
+                    <select
+                        value={selectedPhase}
+                        onChange={(e) => {
+                            phasePicked.current = true;
+                            setSelectedPhase(e.target.value);
+                        }}
+                    >
                         {PHASES.map((p) => (
                             <option key={p.id} value={p.id}>
                                 {p.label}

@@ -88,6 +88,8 @@ export const api = {
     adminListResults: () =>
         request<{
             results: Array<{ matchId: MatchId; home: number; away: number; firstScorer: FirstScorer | null; source: ResultSource }>;
+            /** Server clock (epoch ms) at fetch time — used to default the panel to the current phase. */
+            nowMs: number;
         }>('/api/admin/results'),
     adminSyncResults: () =>
         request<{ summary: { processed: number; written: number; skipped: number } }>('/api/admin/sync-results', {

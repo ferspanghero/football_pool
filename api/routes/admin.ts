@@ -82,6 +82,9 @@ adminRoutes.get('/admin/results', requireAdmin, async (c) => {
             firstScorer: r.firstScorer ?? null,
             source: r.source,
         })),
+        // Authoritative server clock at fetch time — lets the Results panel default to the current
+        // phase (the one still in play) against the same clock the rest of the app locks on.
+        nowMs: c.var.clock(),
     });
 });
 

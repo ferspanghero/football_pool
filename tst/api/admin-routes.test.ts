@@ -108,6 +108,21 @@ describe('GET /api/admin/results', () => {
         expect(body.results).toContainEqual({ matchId: 'G_A_1', home: 2, away: 1, firstScorer: 'AWAY', source: 'MANUAL' });
     });
 
+    test('returns the server clock as nowMs so the panel can default to the current phase', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await app.request('/api/admin/results', { headers: { Cookie: cookie } }, env);
+        const body = (await res.json()) as { nowMs: number };
+
+        // Assert
+        expect(body.nowMs).toBe(Date.parse(FIRST_KICKOFF_UTC) - 5 * 60 * 1000);
+    });
+
     test('returns 401 without admin session', async () => {
         // Arrange
         const db = createTestDb();
