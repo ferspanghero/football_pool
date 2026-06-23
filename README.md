@@ -31,12 +31,12 @@ Per-match base points:
 | Correct goal-difference magnitude, wrong winner | 2 |
 | Nothing right | 0 |
 
-Base points are multiplied by a phase factor (group stage ×1, escalating to the final ×6). A correct champion pick adds a flat bonus. Knockout matches are scored against the 90-minute result. Phases are first-class entities in `shared/phases.ts` (each owns its multiplier, label, and stage); `shared/scoring.ts` holds the scoring math.
+Base points are multiplied by a phase factor (group stage ×1, escalating to the final ×6). A correct champion pick adds a flat bonus. Knockout matches are scored against the 90-minute result. Phases are first-class entities in `shared/phases.ts` (each owns its multiplier, label, stage, and whether it's boostable); `shared/scoring.ts` holds the scoring math.
 
 Two optional extras can add to — or subtract from — a match's points:
 
 - **First to score** *[optional]*: pick which team scores first, or neither. A correct pick earns a bonus; a wrong one — including a goalless draw — costs the same, both multiplied by the phase factor, so it's a genuine risk. Skipping it changes nothing. Locks at the match's kickoff; the admin records the actual first scorer (or a goalless draw) alongside the result, since it isn't derivable from the 90-minute score.
-- **2× boost** *[optional]*: flag one match per round to double everything that match earns — including negative points. Locks at that round's first kickoff.
+- **2× boost** *[optional]*: flag one match per round to double everything that match earns — including negative points. The single-match 3rd-place and final rounds aren't boostable. Locks at that round's first kickoff.
 
 ## Tech Stack
 

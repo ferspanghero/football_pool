@@ -32,6 +32,7 @@ function fail(code: ServiceErrorCode, message: string): ServiceResult {
 const MATCH_BY_ID = new Map(MATCHES.map((m) => [m.id, m]));
 const VALID_TEAM_IDS = new Set(TEAMS.map((t) => t.id));
 const VALID_PHASE_IDS = new Set<string>(PHASES.map((p) => p.id));
+const BOOSTABLE_PHASE_IDS = new Set<string>(PHASES.filter((p) => p.boostable).map((p) => p.id));
 
 /**
  * Validate and persist a player's score prediction for one match. Rejects (without writing) an
@@ -84,8 +85,10 @@ export async function setChampion(
 
 /**
  * Validate and persist (or clear) a player's per-phase boost. A null/undefined `matchId` clears the
- * phase's boost. Rejected for an unknown phase, once the phase's first match has kicked off, or when
- * the match does not belong to the phase. `phaseId`/`matchId` arrive untrusted.
+ * phase's boost. Rejected for an unknown phase, a non-boostable phase (the single-match 3rd-place
+ * and final rounds), once the phase's first match has kicked off, or when the match does not belong
+ * to the phase. Clearing is allowed on any known phase (so a stale boost can always be removed).
+ * `phaseId`/`matchId` arrive untrusted.
  */
 export async function setBoost(
     db: D1Database,
@@ -103,6 +106,7 @@ export async function setBoost(
 
         return OK;
     }
+    if (!BOOSTABLE_PHASE_IDS.has(phaseId)) return fail('FORBIDDEN', 'this phase cannot be boosted');
     const match = typeof input.matchId === 'string' ? MATCH_BY_ID.get(input.matchId) : undefined;
     if (!match || match.phase !== phaseId) return fail('VALIDATION', 'match does not belong to this phase');
     await boostsRepo.set(db, { playerId: input.playerId, phaseId, matchId: match.id });

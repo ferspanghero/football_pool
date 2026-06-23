@@ -30,6 +30,15 @@ describe('PHASES', () => {
         expect(phaseById('R32').stage).toBe('KNOCKOUT');
         expect([phaseById('R32'), phaseById('R16'), phaseById('QF'), phaseById('SF'), phaseById('FINAL')].map((p) => p.multiplier)).toEqual([2, 3, 4, 5, 6]);
     });
+
+    test('every phase is boostable except the single-match 3rd-place and final rounds', () => {
+        // Arrange, Act, Assert — boostability is a first-class phase property, not derived.
+        for (const id of ['GROUP_R1', 'GROUP_R2', 'GROUP_R3', 'R32', 'R16', 'QF', 'SF'] as const) {
+            expect(phaseById(id).boostable).toBe(true);
+        }
+        expect(phaseById('THIRD').boostable).toBe(false);
+        expect(phaseById('FINAL').boostable).toBe(false);
+    });
 });
 
 describe('phaseOrder', () => {

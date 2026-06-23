@@ -6,6 +6,7 @@ import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
 import { resultsRepo } from '@api/repos/results';
 import { hashPassword, signCookie } from '@api/crypto';
+import { toolDefinitions } from '@api/mcp/tools';
 import { FIRST_KICKOFF_UTC } from '@data/tournament';
 import type { AppEnv } from '@api/types';
 
@@ -307,5 +308,27 @@ describe('set_boost tool', () => {
         expect(wrongPhase.isError).toBe(true);
         expect(unknownPhase.isError).toBe(true);
         expect(locked.isError).toBe(true);
+    });
+
+    test('rejects boosting a non-boostable phase (final/3rd-place)', async () => {
+        // Arrange
+        const { db, app, token } = await setup();
+
+        // Act — M104 is the FINAL match; the final is not boostable.
+        const final = await callTool(app, db, token, 'set_boost', { phaseId: 'FINAL', matchId: 'M104' });
+
+        // Assert
+        expect(final.isError).toBe(true);
+    });
+
+    test('does not offer non-boostable phases in the set_boost schema', () => {
+        // Arrange, Act — the tool schema gates input before it reaches the service.
+        const def = toolDefinitions().find((t) => t.name === 'set_boost');
+        const phaseEnum = (def?.inputSchema as { properties: { phaseId: { enum: string[] } } }).properties.phaseId.enum;
+
+        // Assert
+        expect(phaseEnum).toContain('GROUP_R1');
+        expect(phaseEnum).not.toContain('THIRD');
+        expect(phaseEnum).not.toContain('FINAL');
     });
 });

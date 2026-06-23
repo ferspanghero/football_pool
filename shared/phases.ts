@@ -14,19 +14,26 @@ export type Phase = {
     stage: Stage;
     /** Per-match base-point multiplier applied to predictions in this phase. */
     multiplier: number;
+    /**
+     * Whether players may boost a match in this phase (BL7). The 3rd-place playoff and the final
+     * are single-match phases: with no choice of *which* match to boost, an opt-in boost there is
+     * pure ceremony — and a forget-to-set footgun — so they are not boostable. A boost on a
+     * non-boostable phase is rejected on the write path and ignored in scoring.
+     */
+    boostable: boolean;
 };
 
 /** All phases in chronological order. The array order *is* the phase order. */
 export const PHASES: readonly Phase[] = [
-    { id: 'GROUP_R1', label: 'Group Stage — Round 1', stage: 'GROUP', multiplier: 1 },
-    { id: 'GROUP_R2', label: 'Group Stage — Round 2', stage: 'GROUP', multiplier: 1 },
-    { id: 'GROUP_R3', label: 'Group Stage — Round 3', stage: 'GROUP', multiplier: 1 },
-    { id: 'R32', label: 'Round of 32', stage: 'KNOCKOUT', multiplier: 2 },
-    { id: 'R16', label: 'Round of 16', stage: 'KNOCKOUT', multiplier: 3 },
-    { id: 'QF', label: 'Quarter-finals', stage: 'KNOCKOUT', multiplier: 4 },
-    { id: 'SF', label: 'Semi-finals', stage: 'KNOCKOUT', multiplier: 5 },
-    { id: 'THIRD', label: '3rd-place playoff', stage: 'KNOCKOUT', multiplier: 5 },
-    { id: 'FINAL', label: 'Final', stage: 'KNOCKOUT', multiplier: 6 },
+    { id: 'GROUP_R1', label: 'Group Stage — Round 1', stage: 'GROUP', multiplier: 1, boostable: true },
+    { id: 'GROUP_R2', label: 'Group Stage — Round 2', stage: 'GROUP', multiplier: 1, boostable: true },
+    { id: 'GROUP_R3', label: 'Group Stage — Round 3', stage: 'GROUP', multiplier: 1, boostable: true },
+    { id: 'R32', label: 'Round of 32', stage: 'KNOCKOUT', multiplier: 2, boostable: true },
+    { id: 'R16', label: 'Round of 16', stage: 'KNOCKOUT', multiplier: 3, boostable: true },
+    { id: 'QF', label: 'Quarter-finals', stage: 'KNOCKOUT', multiplier: 4, boostable: true },
+    { id: 'SF', label: 'Semi-finals', stage: 'KNOCKOUT', multiplier: 5, boostable: true },
+    { id: 'THIRD', label: '3rd-place playoff', stage: 'KNOCKOUT', multiplier: 5, boostable: false },
+    { id: 'FINAL', label: 'Final', stage: 'KNOCKOUT', multiplier: 6, boostable: false },
 ];
 
 const PHASE_BY_ID = new Map<PhaseId, Phase>(PHASES.map((p) => [p.id, p]));

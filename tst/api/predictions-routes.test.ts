@@ -332,6 +332,19 @@ describe('PUT /api/me/boosts/:phaseId', () => {
         );
         expect(res.status).toBe(401);
     });
+
+    test('rejects boosting a non-boostable phase (final) with 403', async () => {
+        // Arrange
+        const { db, app, cookie } = await loginAlice();
+
+        // Act, Assert — M104 is the FINAL match; the final is not boostable.
+        const res = await app.request(
+            '/api/me/boosts/FINAL',
+            { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify({ matchId: 'M104' }) },
+            env(db),
+        );
+        expect(res.status).toBe(403);
+    });
 });
 
 describe('PUT /api/me/champion', () => {

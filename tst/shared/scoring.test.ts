@@ -168,13 +168,23 @@ describe('scorePrediction', () => {
         expect(r).toEqual({ points: -2, firstScorerPoints: -2, base: 0 });
     });
 
-    test('doubles the whole contribution when boosted (first-scorer points included)', () => {
-        // Arrange, Act — (exact 7×6 final + first scorer 2×6) × 2 boost; the first-scorer component
+    test('doubles the whole contribution when boosted on a boostable phase (first-scorer points included)', () => {
+        // Arrange, Act — SF ×5: (exact 7×5 + first scorer 2×5) × 2 boost; the first-scorer component
         // is reported doubled too, so it reconciles with the total.
-        const r = scorePrediction(exact, 'HOME', { home: 2, away: 1 }, 'HOME', 'FINAL', true);
+        const r = scorePrediction(exact, 'HOME', { home: 2, away: 1 }, 'HOME', 'SF', true);
 
         // Assert
-        expect(r).toEqual({ points: (42 + 12) * 2, firstScorerPoints: 24, base: 7 });
+        expect(r).toEqual({ points: (35 + 10) * 2, firstScorerPoints: 20, base: 7 });
+    });
+
+    test('ignores the boost on a non-boostable phase (3rd-place and final are single-match)', () => {
+        // Arrange, Act — boosted=true must NOT double on FINAL (×6) or THIRD (×5).
+        const finalR = scorePrediction(exact, 'HOME', { home: 2, away: 1 }, 'HOME', 'FINAL', true);
+        const thirdR = scorePrediction(exact, 'HOME', { home: 2, away: 1 }, 'HOME', 'THIRD', true);
+
+        // Assert — identical to the unboosted contribution.
+        expect(finalR).toEqual({ points: 42 + 12, firstScorerPoints: 12, base: 7 });
+        expect(thirdR).toEqual({ points: 35 + 10, firstScorerPoints: 10, base: 7 });
     });
 });
 
@@ -434,6 +444,24 @@ describe('computeLeaderboard', () => {
         expect(board[0]!.firstScorerPoints).toBe(4);
     });
 
+    test('does not double a boost set on a non-boostable phase (stale/forged FINAL row)', () => {
+        // Arrange — a boost row exists for the FINAL, which is not boostable; it must be ignored.
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
+        const predictions = [{ playerId: 1, matchId: 'M104', score: { home: 2, away: 1 } }];
+        const results = new Map([['M104', { home: 2, away: 1 }]]);
+        const boosts = new Map([[1, new Map<PhaseId, string>([['FINAL', 'M104']])]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, undefined, undefined, boosts);
+
+        // Assert — exact final ×6 = 42, NOT doubled to 84; breakdown columns still reconcile.
+        const row = board[0]!;
+        expect(row.totalPoints).toBe(42);
+        expect(row.exactScorePoints + row.correctOutcomePoints + row.correctGoalDiffPoints + row.firstScorerPoints).toBe(
+            row.totalPoints,
+        );
+    });
+
     test('boosts only the chosen match within a phase', () => {
         // Arrange — two group exacts (7 each); only G_A_1 is boosted
         const players = [{ id: 1, displayName: 'Alice', championTeamId: undefined }];
@@ -455,17 +483,18 @@ describe('computeLeaderboard', () => {
     });
 
     test('does not double the champion bonus', () => {
-        // Arrange — boosted exact final (42 → 84) plus a correct champion pick (+100, flat)
+        // Arrange — a boosted group exact (7×1 → 14) plus a correct champion pick (+100, flat). The
+        // final isn't boostable, so the boost rides a boostable phase; the champion bonus stays flat.
         const players = [{ id: 1, displayName: 'Alice', championTeamId: 'BRA' }];
-        const predictions = [{ playerId: 1, matchId: 'M104', score: { home: 2, away: 1 } }];
-        const results = new Map([['M104', { home: 2, away: 1 }]]);
-        const boosts = new Map([[1, new Map<PhaseId, string>([['FINAL', 'M104']])]]);
+        const predictions = [{ playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 } }];
+        const results = new Map([['G_A_1', { home: 2, away: 1 }]]);
+        const boosts = new Map([[1, new Map<PhaseId, string>([['GROUP_R1', 'G_A_1']])]]);
 
         // Act
         const board = computeLeaderboard(players, predictions, results, matchesById, 'BRA', new Map(), boosts);
 
-        // Assert
-        expect(board[0]!.totalPoints).toBe(84 + 100);
+        // Assert — boosted match (14), champion bonus added flat (not doubled to 200)
+        expect(board[0]!.totalPoints).toBe(14 + 100);
     });
 
     test('skips a prediction whose match is not in the match lookup', () => {

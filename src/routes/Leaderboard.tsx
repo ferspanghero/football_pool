@@ -68,7 +68,8 @@ export function Leaderboard() {
                     </li>
                     <li>
                         <b>Boost</b>: flag one match per round to <b>double</b> everything it earns — including negative
-                        points. Locks at the round's first kickoff.
+                        points. The single-match 3rd-place and final rounds can't be boosted. Locks at the round's
+                        first kickoff.
                     </li>
                 </ul>
             </section>

@@ -140,9 +140,11 @@ export type PredictionScore = { points: number; firstScorerPoints: number; base:
 
 /**
  * Score one prediction against a recorded result: weighted base + first-to-score bonus/penalty,
- * with the whole contribution doubled when the match is boosted (BL7). `firstScorerPoints` is the
- * first-to-score share of that total (boost included). `base` is the unweighted `scoreMatch` tier
- * (for exact-count tracking / UI labels).
+ * with the whole contribution doubled when the match is boosted (BL7). A boost is honored only on a
+ * **boostable** phase — the single-match 3rd-place and final rounds are not boostable, so a boost
+ * flagged there (e.g. a stale row) is ignored. `firstScorerPoints` is the first-to-score share of
+ * that total (boost included). `base` is the unweighted `scoreMatch` tier (for exact-count tracking
+ * / UI labels).
  */
 export function scorePrediction(
     prediction: Score,
@@ -152,7 +154,7 @@ export function scorePrediction(
     phase: PhaseId,
     boosted: boolean,
 ): PredictionScore {
-    const factor = boosted ? 2 : 1;
+    const factor = boosted && phaseById(phase).boostable ? 2 : 1;
     const base = scoreMatch(prediction, actual);
     const firstScorerPoints = scoreFirstScorer(firstScorerPick, firstScorerActual, phase) * factor;
     const points = base * phaseById(phase).multiplier * factor + firstScorerPoints;
@@ -212,8 +214,11 @@ export function computeLeaderboard(
             const match = matchesById.get(pred.matchId);
             if (match === undefined) continue;
 
-            // BL7: a player may boost one match per phase to double everything that match earns.
-            const boosted = boostsByPlayer.get(player.id)?.get(match.phase) === pred.matchId;
+            // BL7: a player may boost one match per phase to double everything that match earns —
+            // but only on a boostable phase (a boost flagged on the non-boostable 3rd-place/final is
+            // ignored). Guarding here keeps the breakdown weight (below) in step with the total.
+            const boosted =
+                phaseById(match.phase).boostable && boostsByPlayer.get(player.id)?.get(match.phase) === pred.matchId;
             const scored = scorePrediction(
                 pred.score,
                 pred.firstScorer,
@@ -226,7 +231,8 @@ export function computeLeaderboard(
             firstScorerPoints += scored.firstScorerPoints;
             // Split the base match points into the three non-overlapping reasons the prediction
             // scored, each phase-weighted and boosted so the columns + first-scorer reconcile with
-            // the total (a perfect call earns all three).
+            // the total (a perfect call earns all three). `boosted` is already boostable-guarded
+            // above, so the weight stays coupled to the score's factor (no fresh boostable check).
             const weight = phaseById(match.phase).multiplier * (boosted ? 2 : 1);
             const parts = breakdownMatch(pred.score, actual);
             exactScorePoints += parts.exact * weight;

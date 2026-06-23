@@ -30,8 +30,10 @@ export function MyPicks() {
     const group = phaseGroups[phaseIdx];
 
     // BL7 boost: one match per phase, doubling its points; it locks at the phase's first kickoff.
+    // The single-match 3rd-place/final rounds are not boostable, so they show no boost control.
     const phaseFirstKick = group ? phaseFirstKickoffUtc(group.matches, group.phase.id) : undefined;
     const boostLocked = phaseFirstKick !== undefined && now >= Date.parse(phaseFirstKick);
+    const boostable = group?.phase.boostable ?? false;
     const boostedMatchId = group && ctx.me.boosts.find((b) => b.phaseId === group.phase.id)?.matchId;
 
     // Pick the row variant for a match: TBD (unresolved knockout) → read-only locked (kickoff
@@ -94,17 +96,19 @@ export function MyPicks() {
                             {matches.map((m) => (
                                 <div key={m.id} className="pick-row">
                                     {renderRow(m)}
-                                    <BoostControl
-                                        phaseId={m.phase}
-                                        matchId={m.id}
-                                        boosted={boostedMatchId === m.id}
-                                        editable={
-                                            !boostLocked &&
-                                            hasResolvedTeams(m, ctx.tournament.teams) &&
-                                            Date.parse(m.kickoffUtc) > now
-                                        }
-                                        onChanged={ctx.refresh}
-                                    />
+                                    {boostable && (
+                                        <BoostControl
+                                            phaseId={m.phase}
+                                            matchId={m.id}
+                                            boosted={boostedMatchId === m.id}
+                                            editable={
+                                                !boostLocked &&
+                                                hasResolvedTeams(m, ctx.tournament.teams) &&
+                                                Date.parse(m.kickoffUtc) > now
+                                            }
+                                            onChanged={ctx.refresh}
+                                        />
+                                    )}
                                 </div>
                             ))}
                         </div>

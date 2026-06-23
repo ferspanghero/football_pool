@@ -33,7 +33,7 @@ export type ToolEntry = ToolDefinition & {
 };
 
 const TEAM_BY_ID = new Map(TEAMS.map((t) => [t.id, t]));
-const PHASE_IDS = PHASES.map((p) => p.id);
+const BOOSTABLE_PHASE_IDS = PHASES.filter((p) => p.boostable).map((p) => p.id);
 const NO_ARGS = { type: 'object', properties: {}, additionalProperties: false } as const;
 
 /** Wrap arbitrary data as a JSON text content block. */
@@ -179,11 +179,11 @@ export const TOOLS: ToolEntry[] = [
     {
         name: 'set_boost',
         description:
-            'Boost one match in a phase to double the points it earns (one boost per phase). Pass a null matchId to clear the phase boost. Rejected once the phase has started or if the match is not in the phase.',
+            'Boost one match in a boostable phase to double the points it earns (one boost per phase). The single-match 3rd-place and final rounds are not boostable. Pass a null matchId to clear the phase boost. Rejected once the phase has started or if the match is not in the phase.',
         inputSchema: {
             type: 'object',
             properties: {
-                phaseId: { type: 'string', enum: PHASE_IDS, description: 'The phase to boost in.' },
+                phaseId: { type: 'string', enum: BOOSTABLE_PHASE_IDS, description: 'The boostable phase to boost in.' },
                 matchId: { type: ['string', 'null'], description: 'A match in that phase, or null to clear.' },
             },
             required: ['phaseId'],
