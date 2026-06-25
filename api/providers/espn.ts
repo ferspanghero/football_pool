@@ -29,7 +29,7 @@ type EspnSummary = {
     header?: { competitions?: Array<{ status?: EspnStatus; competitors?: EspnCompetitor[] }> };
     keyEvents?: Array<{ scoringPlay?: boolean; shootout?: boolean; period?: { number?: number }; team?: { id?: string } | null }>;
 };
-type EspnEvent = { id?: string; status?: EspnStatus; competitions?: Array<{ competitors?: EspnCompetitor[] }> };
+type EspnEvent = { id?: string; date?: string; status?: EspnStatus; competitions?: Array<{ competitors?: EspnCompetitor[] }> };
 type EspnScoreboard = { events?: EspnEvent[] };
 
 /** A finished match's 90-minute result, in ESPN's home/away orientation. */
@@ -40,6 +40,19 @@ export type EspnResult = {
     score: Score;
     /** First-scorer side, or undefined when it could not be determined safely. */
     firstScorer?: FirstScorer | undefined;
+};
+
+/**
+ * A scheduled fixture's teams as ESPN lists them, used to resolve knockout pairings (v4). The codes
+ * are ESPN's team abbreviations **as-is** — a real `TeamId` once a side is decided, or a placeholder
+ * pseudo-code (`2A`, `1F`, `3RD`, …) while it is undecided. The bracket sync keeps only the fixtures
+ * whose codes are both real teams.
+ */
+export type EspnFixture = {
+    /** ESPN's scheduled kickoff instant (ISO UTC), used to map the fixture to our schedule. */
+    kickoffUtc: string;
+    homeTeamCode: TeamId;
+    awayTeamCode: TeamId;
 };
 
 /** A minimal `fetch`-like dependency, so the network call can be faked in tests. */
@@ -209,6 +222,40 @@ export async function fetchFinishedResults(fetchFn: FetchLike, startDate: string
                 });
             }
             // else: extra-time match with no summary → skip; the next sync retries it.
+        }
+    }
+
+    return out;
+}
+
+/**
+ * Fetch every scheduled fixture's teams across `[startDate, endDate]` (YYYYMMDD), in ESPN's
+ * home/away orientation (v4). One cheap scoreboard pass per window — no summary fetch. Emits each
+ * event with a readable team pair and a kickoff date, regardless of status or whether the teams are
+ * decided yet (placeholder pseudo-codes pass through); the caller filters and maps them to our
+ * fixtures. A window fetch failure is logged and skipped, so a later sync retries it.
+ */
+export async function fetchScheduledFixtures(fetchFn: FetchLike, startDate: string, endDate: string): Promise<EspnFixture[]> {
+    const out: EspnFixture[] = [];
+    const seen = new Set<string>();
+    for (const [from, to] of dateRangeWindows(startDate, endDate)) {
+        let board: EspnScoreboard;
+        try {
+            board = (await (await fetchFn(`${SCOREBOARD_URL}?dates=${from}-${to}`)).json()) as EspnScoreboard;
+        } catch (err) {
+            log.warn('espn scoreboard fetch failed', { window: `${from}-${to}`, err: String(err) });
+            continue;
+        }
+        for (const event of board.events ?? []) {
+            if (!event.id || !event.date || seen.has(event.id)) continue;
+            const pair = competitorPair(event.competitions?.[0]?.competitors ?? []);
+            if (!pair) continue;
+            seen.add(event.id);
+            out.push({
+                kickoffUtc: event.date,
+                homeTeamCode: pair.home.team!.abbreviation!,
+                awayTeamCode: pair.away.team!.abbreviation!,
+            });
         }
     }
 

@@ -13,7 +13,8 @@ import { isValidGoal, MAX_GOALS, parseFirstScorer } from '@api/http';
 import { boostsRepo } from '@api/repos/boosts';
 import { playersRepo } from '@api/repos/players';
 import { predictionsRepo } from '@api/repos/predictions';
-import { hasResolvedTeams, phaseFirstKickoffUtc, PHASES } from '@shared/phases';
+import { hasResolvedTeams, PHASES } from '@shared/phases';
+import { getResolvedMatches } from '@api/resolved-matches';
 import { FIRST_KICKOFF_UTC, MATCHES, TEAMS } from '@data/tournament';
 import type { PhaseId } from '@shared/types';
 
@@ -45,7 +46,8 @@ export async function submitPrediction(
     nowMs: number,
     input: { playerId: number; matchId: string; homeGoals: unknown; awayGoals: unknown; firstScorer: unknown },
 ): Promise<ServiceResult> {
-    const match = MATCH_BY_ID.get(input.matchId);
+    // Resolve teams from the overlay so a knockout fixture ESPN has filled in becomes predictable.
+    const match = (await getResolvedMatches(db)).find((m) => m.id === input.matchId);
     if (!match) return fail('NOT_FOUND', 'match not found');
     if (!hasResolvedTeams(match, TEAMS)) return fail('FORBIDDEN', 'match teams not assigned yet');
     if (nowMs >= Date.parse(match.kickoffUtc)) return fail('FORBIDDEN', 'prediction locked at kickoff');
@@ -85,9 +87,15 @@ export async function setChampion(
 
 /**
  * Validate and persist (or clear) a player's per-phase boost. A null/undefined `matchId` clears the
- * phase's boost. Rejected for an unknown phase, a non-boostable phase (the single-match 3rd-place
- * and final rounds), once the phase's first match has kicked off, or when the match does not belong
- * to the phase. Clearing is allowed on any known phase (so a stale boost can always be removed).
+ * phase's boost.
+ *
+ * The boost is locked **per target match**, not per phase: a player may set, move, or clear their
+ * one boost among the matches in the phase that have not yet kicked off — even after earlier matches
+ * in the same phase are done. Once the currently-boosted match kicks off the boost freezes: it can
+ * no longer be moved to another match nor cleared, so a player can't retract a boost after seeing
+ * how that match is going. Rejected for an unknown phase, a non-boostable phase (the single-match
+ * 3rd-place and final rounds), a target match not in the phase, or a target that has already kicked
+ * off. Clearing a stale boost on a non-boostable phase (which scoring ignores) is always allowed.
  * `phaseId`/`matchId` arrive untrusted.
  */
 export async function setBoost(
@@ -97,18 +105,28 @@ export async function setBoost(
 ): Promise<ServiceResult> {
     if (!VALID_PHASE_IDS.has(input.phaseId)) return fail('NOT_FOUND', 'unknown phase');
     const phaseId = input.phaseId as PhaseId;
-    const firstKickoff = phaseFirstKickoffUtc(MATCHES, phaseId);
-    if (firstKickoff !== undefined && nowMs >= Date.parse(firstKickoff)) {
-        return fail('FORBIDDEN', 'boost locked at phase first kickoff');
-    }
+
+    // The player's existing boost for this phase (if any) and whether its match has already started.
+    // A started boost is frozen — it cannot be moved off or cleared.
+    const current = (await boostsRepo.findByPlayer(db, input.playerId)).find((b) => b.phaseId === phaseId);
+    const currentMatch = current ? MATCH_BY_ID.get(current.matchId) : undefined;
+    const currentLocked = currentMatch !== undefined && nowMs >= Date.parse(currentMatch.kickoffUtc);
+
     if (input.matchId === null || input.matchId === undefined) {
+        // Block clearing only when a live boostable boost has started; a stale row on a non-boostable
+        // phase is always removable (scoring already ignores it).
+        if (BOOSTABLE_PHASE_IDS.has(phaseId) && currentLocked) {
+            return fail('FORBIDDEN', 'boost locked at kickoff');
+        }
         await boostsRepo.clear(db, input.playerId, phaseId);
 
         return OK;
     }
     if (!BOOSTABLE_PHASE_IDS.has(phaseId)) return fail('FORBIDDEN', 'this phase cannot be boosted');
+    if (currentLocked) return fail('FORBIDDEN', 'boost locked at kickoff');
     const match = typeof input.matchId === 'string' ? MATCH_BY_ID.get(input.matchId) : undefined;
     if (!match || match.phase !== phaseId) return fail('VALIDATION', 'match does not belong to this phase');
+    if (nowMs >= Date.parse(match.kickoffUtc)) return fail('FORBIDDEN', 'boost locked at kickoff');
     await boostsRepo.set(db, { playerId: input.playerId, phaseId, matchId: match.id });
 
     return OK;

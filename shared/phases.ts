@@ -74,20 +74,6 @@ export function hasResolvedTeams(match: Match, teams: ReadonlyArray<Team>): bool
     return ids.has(match.homeTeamId) && ids.has(match.awayTeamId);
 }
 
-/**
- * Earliest kickoff (ISO UTC) among a phase's matches, or undefined when the phase has none.
- * Used to lock a per-phase choice — the BL7 boost — at the moment that phase's first match starts.
- */
-export function phaseFirstKickoffUtc(matches: ReadonlyArray<Match>, phaseId: PhaseId): string | undefined {
-    let earliest: string | undefined;
-    for (const m of matches) {
-        if (m.phase !== phaseId) continue;
-        if (earliest === undefined || m.kickoffUtc < earliest) earliest = m.kickoffUtc;
-    }
-
-    return earliest;
-}
-
 /** A phase paired with its matches (kickoff-ascending). */
 export type PhaseGroup = { phase: Phase; matches: Match[] };
 

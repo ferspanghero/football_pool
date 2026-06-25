@@ -110,6 +110,39 @@ test('E13 — boosting a match doubles its points on the leaderboard', async ({ 
     await playerCtx.close();
 });
 
+test('E20 — a later Round-1 match stays boostable after earlier matches in the phase kick off', async ({ browser }) => {
+    // Arrange — FIXED clock just after G_L_1's kickoff: many Round-1 matches (incl. the opener) have
+    // started, but the later G_L_2 has not. Under the old phase-wide lock its boost would be gone.
+    const adminCtx = await browser.newContext();
+    const adminPage = await adminCtx.newPage();
+    const tour = await fetchTournament(adminPage);
+    const gL1 = tour.matches.find((m) => m.id === 'G_L_1')!;
+    await setServerClock(adminPage, { mode: 'FIXED', iso: shiftIso(gL1.kickoffUtc, 60_000) });
+    const gameName = uniqueGameName('E20');
+    createdGameIds.push(await createGame(adminPage, gameName, GAME_PW));
+
+    const playerCtx = await browser.newContext();
+    const playerPage = await playerCtx.newPage();
+    await enterGameUi(playerPage, gameName, GAME_PW, 'Alice');
+
+    // Assert — the phase is mid-flight: the opener G_A_1 has locked (no editable inputs) while the
+    // later G_L_2 is still open. (Keys off the clock, so it's robust to any recorded results.)
+    await expect(playerPage.locator('input[data-match="G_A_1"]')).toHaveCount(0);
+
+    // …and the still-upcoming G_L_2 can be boosted, with the boost surviving a reload.
+    const lateRow = playerPage.locator('.pick-row', { has: playerPage.locator('input[data-match="G_L_2"]') });
+    await expect(lateRow.locator('input[data-match="G_L_2"]')).toHaveCount(2);
+    await lateRow.locator('.pick-boost button').click();
+    await expect(lateRow.locator('.pick-boost button')).toContainText('2× boosted');
+
+    await playerPage.reload();
+    const reloaded = playerPage.locator('.pick-row', { has: playerPage.locator('input[data-match="G_L_2"]') });
+    await expect(reloaded.locator('.pick-boost button')).toContainText('2× boosted');
+
+    await adminCtx.close();
+    await playerCtx.close();
+});
+
 test('E14 — a scored My-picks row shows net points, the actual score, and a correct ⚽', async ({ browser }) => {
     // Arrange — clock pinned before kickoff; Alice predicts a wrong score (0-3) but the correct first scorer (home).
     const adminCtx = await browser.newContext();

@@ -7,6 +7,7 @@ import {
     espnDateFromKickoff,
     extractFromSummary,
     fetchFinishedResults,
+    fetchScheduledFixtures,
     type FetchLike,
 } from '@api/providers/espn';
 
@@ -184,5 +185,59 @@ describe('fetchFinishedResults', () => {
         };
         const results = await fetchFinishedResults(fetchFn, '20260611', '20260611');
         expect(results).toEqual([{ homeTeamCode: 'MEX', awayTeamCode: 'RSA', score: { home: 2, away: 1 }, firstScorer: undefined }]);
+    });
+});
+
+describe('fetchScheduledFixtures (real captured knockout scoreboard)', () => {
+    test('extracts each fixture’s kickoff + team codes, passing placeholder pseudo-codes through', async () => {
+        // Arrange — a real R32 scoreboard window: some sides resolved (CAN, BRA, GER, MAR), others
+        // still placeholders (2A, 2F, 3RD, 1F, 2E, 2I)
+        const fetchFn = routingFetch(loadFixture('espn-scoreboard-knockout.json'));
+
+        // Act
+        const fixtures = await fetchScheduledFixtures(fetchFn, '20260628', '20260702');
+
+        // Assert — the codes come through as-is in ESPN's home/away order; placeholders included
+        expect(fixtures).toHaveLength(5);
+        expect(fixtures).toContainEqual({ kickoffUtc: '2026-06-28T19:00Z', homeTeamCode: '2A', awayTeamCode: 'CAN' });
+        expect(fixtures).toContainEqual({ kickoffUtc: '2026-06-29T17:00Z', homeTeamCode: 'BRA', awayTeamCode: '2F' });
+        expect(fixtures).toContainEqual({ kickoffUtc: '2026-06-29T20:30Z', homeTeamCode: 'GER', awayTeamCode: '3RD' });
+    });
+
+    test('skips events missing a date or a readable team pair, and dedupes by event id', async () => {
+        // Arrange
+        const board = {
+            events: [
+                { id: 'ok', date: '2026-06-28T19:00Z', competitions: [{ competitors: [
+                    { homeAway: 'home', team: { abbreviation: 'GER' } },
+                    { homeAway: 'away', team: { abbreviation: 'BRA' } }] }] },
+                { id: 'ok', date: '2026-06-28T19:00Z', competitions: [{ competitors: [
+                    { homeAway: 'home', team: { abbreviation: 'GER' } },
+                    { homeAway: 'away', team: { abbreviation: 'BRA' } }] }] }, // duplicate id
+                { id: 'no-date', competitions: [{ competitors: [
+                    { homeAway: 'home', team: { abbreviation: 'X' } },
+                    { homeAway: 'away', team: { abbreviation: 'Y' } }] }] },
+                { id: 'no-pair', date: '2026-06-29T17:00Z', competitions: [{ competitors: [] }] },
+                { id: 'no-comp', date: '2026-06-30T01:00Z' }, // event with no competitions at all
+            ],
+        };
+
+        // Act
+        const fixtures = await fetchScheduledFixtures(routingFetch(board), '20260628', '20260628');
+
+        // Assert — only the one well-formed, de-duplicated event survives
+        expect(fixtures).toEqual([{ kickoffUtc: '2026-06-28T19:00Z', homeTeamCode: 'GER', awayTeamCode: 'BRA' }]);
+    });
+
+    test('returns nothing for an empty board, or when the scoreboard fetch fails', async () => {
+        // Arrange — a board with no events key, and a fetch that throws
+        const empty: FetchLike = async () => ({ json: async () => ({}) });
+        const broken: FetchLike = async () => {
+            throw new Error('scoreboard down');
+        };
+
+        // Act, Assert
+        expect(await fetchScheduledFixtures(empty, '20260628', '20260628')).toEqual([]);
+        expect(await fetchScheduledFixtures(broken, '20260628', '20260628')).toEqual([]);
     });
 });

@@ -5,6 +5,7 @@ import { FixedClockProvider } from '@api/clock';
 import { gamesRepo } from '@api/repos/games';
 import { playersRepo } from '@api/repos/players';
 import { resultsRepo } from '@api/repos/results';
+import { knockoutTeamsRepo } from '@api/repos/knockoutTeams';
 import { hashPassword } from '@api/crypto';
 import { MATCHES, FIRST_KICKOFF_UTC } from '@data/tournament';
 import type { AppEnv } from '@api/types';
@@ -617,11 +618,16 @@ describe('POST /api/admin/sync-results (manual sync)', () => {
 
         // Act
         const res = await app.request('/api/admin/sync-results', { method: 'POST', headers: { Cookie: cookie } }, env);
-        const body = (await res.json()) as { summary: { processed: number; written: number; skipped: number } };
+        const body = (await res.json()) as {
+            bracket: { processed: number; written: number; skipped: number };
+            results: { processed: number; written: number; skipped: number };
+        };
 
-        // Assert — the opener is recorded as AUTO (one-sided → first scorer HOME)
+        // Assert — the opener is recorded as AUTO (one-sided → first scorer HOME). The bracket pass
+        // runs too but the opener is a group match, so it resolves no knockout fixture.
         expect(res.status).toBe(200);
-        expect(body.summary).toEqual({ processed: 1, written: 1, skipped: 0 });
+        expect(body.results).toEqual({ processed: 1, written: 1, skipped: 0 });
+        expect(body.bracket.written).toBe(0);
         const stored = await resultsRepo.findById(db, 'G_A_1');
         expect(stored?.score).toEqual({ home: 2, away: 0 });
         expect(stored?.firstScorer).toBe('HOME');
@@ -644,5 +650,101 @@ describe('POST /api/admin/sync-results (manual sync)', () => {
 
         // Assert
         expect(res.status).toBe(502);
+    });
+});
+
+describe('admin knockout override', () => {
+    const ct = { 'Content-Type': 'application/json' };
+    const put = (app: ReturnType<typeof buildApp>, env: AppEnv['Bindings'], cookie: string, matchId: string, data: object) =>
+        app.request(`/api/admin/knockout/${matchId}`, { method: 'PUT', headers: { ...ct, Cookie: cookie }, body: JSON.stringify(data) }, env);
+
+    test('GET lists knockout fixtures with resolved teams + provenance; 401 without a session', async () => {
+        // Arrange — M73 resolved by hand (MANUAL)
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+        await knockoutTeamsRepo.upsert(db, { matchId: 'M73', homeTeamId: 'MEX', awayTeamId: 'CAN', source: 'MANUAL' });
+
+        // Act
+        expect((await app.request('/api/admin/knockout', {}, env)).status).toBe(401);
+        const res = await app.request('/api/admin/knockout', { headers: { Cookie: cookie } }, env);
+        const body = (await res.json()) as { knockout: Array<{ matchId: string; homeTeamId: string; source: string | null; resolved: boolean }> };
+
+        // Assert — every knockout fixture is listed; M73 shows its MANUAL resolution, an untouched one is unresolved
+        expect(res.status).toBe(200);
+        const m73 = body.knockout.find((k) => k.matchId === 'M73')!;
+        expect(m73).toMatchObject({ homeTeamId: 'MEX', awayTeamId: 'CAN', source: 'MANUAL', resolved: true });
+        const m74 = body.knockout.find((k) => k.matchId === 'M74')!;
+        expect(m74).toMatchObject({ source: null, resolved: false });
+    });
+
+    test('PUT writes a MANUAL override that GET then reflects', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act
+        const res = await put(app, env, cookie, 'M73', { homeTeamId: 'BRA', awayTeamId: 'ARG' });
+
+        // Assert
+        expect(res.status).toBe(200);
+        expect(await knockoutTeamsRepo.findById(db, 'M73')).toMatchObject({ homeTeamId: 'BRA', awayTeamId: 'ARG', source: 'MANUAL' });
+    });
+
+    test('PUT rejects an unknown team, equal teams, a non-knockout match, and an unknown match', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+
+        // Act, Assert
+        expect((await put(app, env, cookie, 'M73', { homeTeamId: 'ZZZ', awayTeamId: 'CAN' })).status).toBe(400);
+        expect((await put(app, env, cookie, 'M73', { homeTeamId: 'BRA', awayTeamId: 'BRA' })).status).toBe(400);
+        expect((await put(app, env, cookie, 'G_A_1', { homeTeamId: 'BRA', awayTeamId: 'ARG' })).status).toBe(400);
+        expect((await put(app, env, cookie, 'NOPE', { homeTeamId: 'BRA', awayTeamId: 'ARG' })).status).toBe(404);
+    });
+
+    test('PUT rejects editing a knockout fixture whose kickoff has passed with 403', async () => {
+        // Arrange — clock one hour after M73's kickoff (2026-06-28T19:00Z)
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildApp(FixedClockProvider('2026-06-28T20:00:00Z'));
+        const cookie = await loginAdmin(app, env);
+
+        // Act, Assert — a match that has already kicked off can no longer have its teams edited
+        const res = await put(app, env, cookie, 'M73', { homeTeamId: 'BRA', awayTeamId: 'ARG' });
+        expect(res.status).toBe(403);
+        expect(await knockoutTeamsRepo.findById(db, 'M73')).toBeUndefined();
+    });
+
+    test('PUT rejects without an admin session', async () => {
+        // Arrange
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+
+        // Act, Assert
+        const res = await app.request('/api/admin/knockout/M73', { method: 'PUT', headers: ct, body: JSON.stringify({ homeTeamId: 'BRA', awayTeamId: 'ARG' }) }, env);
+        expect(res.status).toBe(401);
+    });
+
+    test('DELETE clears an override (404 for an unknown match, 401 without a session)', async () => {
+        // Arrange — M73 resolved by hand
+        const db = createTestDb();
+        const env = await adminEnv(db);
+        const app = buildPreKickoffApp();
+        const cookie = await loginAdmin(app, env);
+        await knockoutTeamsRepo.upsert(db, { matchId: 'M73', homeTeamId: 'MEX', awayTeamId: 'CAN', source: 'MANUAL' });
+
+        // Act, Assert
+        expect((await app.request('/api/admin/knockout/M73', { method: 'DELETE' }, env)).status).toBe(401);
+        expect((await app.request('/api/admin/knockout/NOPE', { method: 'DELETE', headers: { Cookie: cookie } }, env)).status).toBe(404);
+        const res = await app.request('/api/admin/knockout/M73', { method: 'DELETE', headers: { Cookie: cookie } }, env);
+        expect(res.status).toBe(200);
+        expect(await knockoutTeamsRepo.findById(db, 'M73')).toBeUndefined();
     });
 });

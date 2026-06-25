@@ -5,8 +5,8 @@
  *
  * - `PUT /me/predictions/:matchId` — body `{ homeGoals, awayGoals, firstScorer? }`. Rejected once the
  *   match's kickoff has passed (server clock authoritative).
- * - `PUT /me/boosts/:phaseId` — body `{ matchId }` (null clears). Rejected once the phase's first
- *   match has kicked off.
+ * - `PUT /me/boosts/:phaseId` — body `{ matchId }` (null clears). The boost may target any match in
+ *   the phase that has not yet kicked off; it locks once the boosted match itself kicks off.
  * - `PUT /me/champion` — body `{ teamId }`. Rejected once the tournament's first kickoff has passed.
  */
 

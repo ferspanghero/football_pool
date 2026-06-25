@@ -116,11 +116,21 @@ export async function enterGameUi(
     await page.waitForURL(/\/game\//);
 }
 
-/** Best-effort cleanup: delete the given games and restore real time. */
+/** Best-effort cleanup: delete the given games, clear any knockout overrides, and restore real time. */
 export async function cleanup(page: Page, gameIds: number[]): Promise<void> {
     await authAdmin(page);
     for (const id of gameIds) {
         await page.request.delete(`/api/admin/games/${id}`);
+    }
+    // Clear any knockout overlay rows a live sync (E16, once the real bracket resolves a fixture) or
+    // an override left behind, so the shared local D1 returns to all-placeholder for specs that
+    // assert unresolved knockouts (E10).
+    const res = await page.request.get('/api/admin/knockout');
+    if (res.ok()) {
+        const { knockout } = (await res.json()) as { knockout: Array<{ matchId: string; source: string | null }> };
+        for (const k of knockout) {
+            if (k.source !== null) await page.request.delete(`/api/admin/knockout/${k.matchId}`);
+        }
     }
     await page.request.post('/api/admin/test/clock', { data: { mode: 'REALTIME' } });
 }

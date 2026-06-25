@@ -1,0 +1,154 @@
+{
+  "events": [
+    {
+      "id": "760486",
+      "date": "2026-06-28T19:00Z",
+      "status": {
+        "type": {
+          "name": "STATUS_SCHEDULED",
+          "completed": false
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "team": {
+                "abbreviation": "2A"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "team": {
+                "abbreviation": "CAN"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "760487",
+      "date": "2026-06-29T17:00Z",
+      "status": {
+        "type": {
+          "name": "STATUS_SCHEDULED",
+          "completed": false
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "team": {
+                "abbreviation": "BRA"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "team": {
+                "abbreviation": "2F"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "760489",
+      "date": "2026-06-29T20:30Z",
+      "status": {
+        "type": {
+          "name": "STATUS_SCHEDULED",
+          "completed": false
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "team": {
+                "abbreviation": "GER"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "team": {
+                "abbreviation": "3RD"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "760488",
+      "date": "2026-06-30T01:00Z",
+      "status": {
+        "type": {
+          "name": "STATUS_SCHEDULED",
+          "completed": false
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "team": {
+                "abbreviation": "1F"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "team": {
+                "abbreviation": "MAR"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "760490",
+      "date": "2026-06-30T17:00Z",
+      "status": {
+        "type": {
+          "name": "STATUS_SCHEDULED",
+          "completed": false
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "team": {
+                "abbreviation": "2E"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "team": {
+                "abbreviation": "2I"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

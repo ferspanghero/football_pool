@@ -12,6 +12,7 @@
 
 import { MATCHES, TEAMS } from '@data/tournament';
 import { hasResolvedTeams } from '@shared/phases';
+import { getResolvedMatches } from '@api/resolved-matches';
 import { resultsRepo } from '@api/repos/results';
 import { espnDateFromKickoff, shiftYmd, type EspnResult } from '@api/providers/espn';
 import type { FirstScorer, Match, Score } from '@shared/types';
@@ -71,8 +72,9 @@ export async function syncResults({ results, db, now, ignoreWindow = false }: Sy
 
     const recorded = new Set((await resultsRepo.findAll(db)).map((r) => r.matchId));
     // Candidates: resolved fixtures that have kicked off and have no result recorded yet. A
-    // placeholder knockout has no real teams, so it's excluded (and can't match an ESPN result).
-    const candidates = MATCHES.filter(
+    // placeholder knockout has no real teams, so it's excluded (and can't match an ESPN result) —
+    // until the bracket sync fills its teams into the overlay, after which its result auto-records.
+    const candidates = (await getResolvedMatches(db)).filter(
         (m) => hasResolvedTeams(m, TEAMS) && Date.parse(m.kickoffUtc) <= now && !recorded.has(m.id),
     );
     if (candidates.length === 0) return { processed: 0, written: 0, skipped: 0 };

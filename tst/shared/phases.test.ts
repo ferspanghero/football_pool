@@ -8,7 +8,6 @@ import {
     hasResolvedTeams,
     buildPhaseGroups,
     currentPhaseIndex,
-    phaseFirstKickoffUtc,
 } from '@shared/phases';
 import { MATCHES, TEAMS } from '@data/tournament';
 import type { Match } from '@shared/types';
@@ -115,43 +114,6 @@ describe('buildPhaseGroups', () => {
         expect(groups[0]!.phase.id).toBe('R32');
         const kickoffs = groups[0]!.matches.map((m) => m.kickoffUtc);
         expect(kickoffs).toEqual([...kickoffs].sort());
-    });
-});
-
-describe('phaseFirstKickoffUtc', () => {
-    const make = (id: string, phase: Match['phase'], kickoffUtc: string): Match => ({
-        id,
-        phase,
-        kickoffUtc,
-        homeTeamId: 'X',
-        awayTeamId: 'Y',
-    });
-
-    test("returns the earliest kickoff among a phase's matches", () => {
-        // Arrange
-        const matches = [
-            make('a', 'R32', '2026-07-01T18:00:00Z'),
-            make('b', 'R32', '2026-06-30T12:00:00Z'),
-            make('c', 'R16', '2026-06-01T12:00:00Z'),
-        ];
-
-        // Act, Assert — earliest R32, ignoring the earlier R16 match in another phase
-        expect(phaseFirstKickoffUtc(matches, 'R32')).toBe('2026-06-30T12:00:00Z');
-    });
-
-    test('returns undefined when the phase has no matches', () => {
-        // Arrange, Act, Assert
-        expect(phaseFirstKickoffUtc([], 'FINAL')).toBeUndefined();
-    });
-
-    test('matches the real schedule for the group opener', () => {
-        // Arrange
-        const expected = Math.min(
-            ...MATCHES.filter((m) => m.phase === 'GROUP_R1').map((m) => Date.parse(m.kickoffUtc)),
-        );
-
-        // Act, Assert
-        expect(Date.parse(phaseFirstKickoffUtc(MATCHES, 'GROUP_R1')!)).toBe(expected);
     });
 });
 

@@ -1,7 +1,7 @@
 /**
  * Repository for the `phase_boosts` table — at most one boosted match per (player, phase),
  * enforced by the table's composite primary key (BL7). A boost doubles the points its match
- * earns; the per-phase lock is enforced at the API layer.
+ * earns; the kickoff lock (per target match) is enforced at the API layer (see `setBoost`).
  */
 
 import type { MatchId, PhaseId } from '@shared/types';

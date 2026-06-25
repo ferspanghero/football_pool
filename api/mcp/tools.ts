@@ -15,8 +15,9 @@ import { predictionsRepo } from '@api/repos/predictions';
 import { resultsRepo } from '@api/repos/results';
 import { loadLeaderboard } from '@api/services/leaderboard';
 import { setBoost, setChampion, submitPrediction, type ServiceResult } from '@api/services/predictions';
+import { getResolvedMatches } from '@api/resolved-matches';
 import { hasResolvedTeams, phaseById, PHASES } from '@shared/phases';
-import { MATCHES, TEAMS } from '@data/tournament';
+import { TEAMS } from '@data/tournament';
 
 /** Per-request context for a tool handler — DB plus the identity resolved from the bearer token. */
 export type ToolContext = { db: D1Database; playerId: number; gameId: number; nowMs: number };
@@ -67,7 +68,7 @@ export const TOOLS: ToolEntry[] = [
         handler: async (_args, ctx) => {
             const predByMatch = new Map((await predictionsRepo.findByPlayer(ctx.db, ctx.playerId)).map((p) => [p.matchId, p]));
             const resultByMatch = new Map((await resultsRepo.findAll(ctx.db)).map((r) => [r.matchId, r]));
-            const matches = MATCHES.map((m) => {
+            const matches = (await getResolvedMatches(ctx.db)).map((m) => {
                 const pred = predByMatch.get(m.id);
                 const result = resultByMatch.get(m.id);
 
@@ -179,7 +180,7 @@ export const TOOLS: ToolEntry[] = [
     {
         name: 'set_boost',
         description:
-            'Boost one match in a boostable phase to double the points it earns (one boost per phase). The single-match 3rd-place and final rounds are not boostable. Pass a null matchId to clear the phase boost. Rejected once the phase has started or if the match is not in the phase.',
+            'Boost one match in a boostable phase to double the points it earns (one boost per phase). The single-match 3rd-place and final rounds are not boostable. Pass a null matchId to clear the phase boost. You can boost or move the boost to any match in the phase that has not yet kicked off (even after earlier matches in the phase are done); once your boosted match kicks off it locks. Rejected if the target match has kicked off or is not in the phase.',
         inputSchema: {
             type: 'object',
             properties: {

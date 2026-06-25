@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api, ApiError } from '../api-client';
 import { scorePrediction } from '@shared/scoring';
-import { buildPhaseGroups, currentPhaseIndex, hasResolvedTeams, isGroupMatch, phaseFirstKickoffUtc } from '@shared/phases';
+import { buildPhaseGroups, currentPhaseIndex, hasResolvedTeams, isGroupMatch } from '@shared/phases';
 import { formatKickoffDate, formatKickoffTime } from '@shared/time';
 import { flagEmoji } from '@data/flags';
 import { matchSides, type MatchSide } from '../lib/matchDisplay';
@@ -29,12 +29,14 @@ export function MyPicks() {
     const championLocked = now >= Date.parse(ctx.tournament.firstKickoffUtc);
     const group = phaseGroups[phaseIdx];
 
-    // BL7 boost: one match per phase, doubling its points; it locks at the phase's first kickoff.
-    // The single-match 3rd-place/final rounds are not boostable, so they show no boost control.
-    const phaseFirstKick = group ? phaseFirstKickoffUtc(group.matches, group.phase.id) : undefined;
-    const boostLocked = phaseFirstKick !== undefined && now >= Date.parse(phaseFirstKick);
+    // BL7 boost: one match per phase, doubling its points. The boost can target any match in the
+    // phase that hasn't kicked off yet (even after earlier matches in the phase are done); it freezes
+    // once the boosted match itself kicks off (no moving or clearing it then). The single-match
+    // 3rd-place/final rounds are not boostable, so they show no boost control.
     const boostable = group?.phase.boostable ?? false;
     const boostedMatchId = group && ctx.me.boosts.find((b) => b.phaseId === group.phase.id)?.matchId;
+    const boostedMatch = group?.matches.find((m) => m.id === boostedMatchId);
+    const boostFrozen = boostedMatch !== undefined && Date.parse(boostedMatch.kickoffUtc) <= now;
 
     // Pick the row variant for a match: TBD (unresolved knockout) → read-only locked (kickoff
     // passed) → editable open. Each is wrapped in a `.pick-row` by the caller.
@@ -102,7 +104,7 @@ export function MyPicks() {
                                             matchId={m.id}
                                             boosted={boostedMatchId === m.id}
                                             editable={
-                                                !boostLocked &&
+                                                !boostFrozen &&
                                                 hasResolvedTeams(m, ctx.tournament.teams) &&
                                                 Date.parse(m.kickoffUtc) > now
                                             }
@@ -346,10 +348,11 @@ function OpenRow({ matchId, prefix, home, away, pick, firstScorer, time, onSaved
 }
 
 /**
- * Per-match 2× boost control (BL7). The toggle appears only on a match that's still predictable
- * (resolved teams, kickoff not passed) and whose phase hasn't locked; selecting another match in
- * the phase replaces the prior one (enforced server-side by the per-phase key). Otherwise the row
- * is read-only: the boosted match shows a badge, everything else shows nothing.
+ * Per-match 2× boost control (BL7). The toggle appears on any match that's still predictable
+ * (resolved teams, kickoff not passed), as long as the player's current boost (if any) hasn't kicked
+ * off yet; selecting another match in the phase replaces the prior one (enforced server-side by the
+ * per-phase key). Otherwise the row is read-only: the boosted match shows a badge, everything else
+ * shows nothing.
  */
 function BoostControl({
     phaseId,
@@ -386,7 +389,7 @@ function BoostControl({
             await api.saveBoost(phaseId, boosted ? null : matchId);
             await onChanged();
         } catch (err) {
-            setError(saveErrorMessage(err, 'Boosts have locked for this phase (it has started). Refresh the page.'));
+            setError(saveErrorMessage(err, 'This boost has locked (the match kicked off). Refresh the page.'));
         } finally {
             setSaving(false);
         }
@@ -399,7 +402,7 @@ function BoostControl({
                 className={boosted ? 'boost-on' : 'secondary'}
                 onClick={toggle}
                 disabled={saving}
-                title="Double everything this match earns. One boost per round; it locks at the round's first kickoff."
+                title="Double everything this match earns. One boost per round; you can move it until the match you boosted kicks off."
             >
                 {saving ? '…' : boosted ? '⚡ 2× boosted' : '⚡ Boost 2×'}
             </button>

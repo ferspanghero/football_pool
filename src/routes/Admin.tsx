@@ -1,14 +1,14 @@
 /** Admin UI — login + tabs for games, results, and players. */
 
 import { useEffect, useRef, useState } from 'react';
-import { buildPhaseGroups, currentPhaseIndex, PHASES } from '@shared/phases';
+import { buildPhaseGroups, currentPhaseIndex, isKnockoutMatch, PHASES } from '@shared/phases';
 import { api, ApiError, type GameSummary, type TournamentData } from '../api-client';
 import { Skeleton, useDelayedFlag } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
 import { TeamSide } from '../components/Flag';
 import { SaveButton } from '../components/SaveButton';
 import { matchSides, type MatchSide } from '../lib/matchDisplay';
-import type { FirstScorer, ResultSource } from '@shared/types';
+import type { FirstScorer, ResultSource, Team, TeamId } from '@shared/types';
 
 type AdminTab = 'games' | 'results' | 'players';
 
@@ -275,6 +275,9 @@ function AdminResults() {
     const [syncing, setSyncing] = useState(false);
     // Bumped after a manual sync so the result rows remount and re-seed from the refreshed scores.
     const [reloadKey, setReloadKey] = useState(0);
+    // Authoritative server clock (epoch ms) at last load — gates whether a knockout fixture's teams
+    // are still editable (only before its kickoff). The server re-checks on write.
+    const [nowMs, setNowMs] = useState(0);
 
     const toScores = (results: Awaited<ReturnType<typeof api.adminListResults>>['results']) =>
         new Map(
@@ -289,6 +292,7 @@ function AdminResults() {
             .then(([t, r]) => {
                 setTournament(t);
                 setScores(toScores(r.results));
+                setNowMs(r.nowMs);
                 // Default to the current phase (the one still in play), mirroring My-picks, rather
                 // than always opening on Round 1. Uses the authoritative server clock returned by
                 // the results endpoint so it agrees with the rest of the app (and the test clock).
@@ -303,14 +307,25 @@ function AdminResults() {
         setScores((prev) => new Map(prev).set(matchId, result));
     };
 
+    // A knockout fixture's teams were just (re)resolved by an admin — patch the in-memory tournament
+    // so the change persists across phase switches, without remounting every row (which would drop
+    // any in-progress score entry elsewhere).
+    const onTeamsResolved = (matchId: string, home: TeamId, away: TeamId) => {
+        setTournament((prev) =>
+            prev ? { ...prev, matches: prev.matches.map((m) => (m.id === matchId ? { ...m, homeTeamId: home, awayTeamId: away } : m)) } : prev,
+        );
+    };
+
     const onSync = async () => {
         setSyncing(true);
         try {
-            const { summary } = await api.adminSyncResults();
-            const r = await api.adminListResults();
+            const { bracket, results } = await api.adminSyncResults();
+            const [t, r] = await Promise.all([api.tournament(), api.adminListResults()]);
+            setTournament(t);
             setScores(toScores(r.results));
-            setReloadKey((k) => k + 1);
-            showToast('success', `Synced — ${summary.written} written, ${summary.skipped} skipped (${summary.processed} finished)`);
+            setNowMs(r.nowMs);
+            setReloadKey((key) => key + 1);
+            showToast('success', `Synced — ${results.written} results, ${bracket.written} knockout teams resolved`);
         } catch (err) {
             showToast('error', err instanceof ApiError ? err.message : 'Sync failed');
         } finally {
@@ -318,7 +333,8 @@ function AdminResults() {
         }
     };
 
-    const teams = tournament?.teams ?? [];
+    // Team dropdowns list every team alphabetically; matchSides resolves ids regardless of order.
+    const teams = [...(tournament?.teams ?? [])].sort((a, b) => a.name.localeCompare(b.name));
     const filtered = (tournament?.matches ?? []).filter((m) => m.phase === selectedPhase);
 
     return (
@@ -341,8 +357,8 @@ function AdminResults() {
                         ))}
                     </select>
                 </label>
-                <button type="button" onClick={onSync} disabled={syncing} title="Pull finished results from the live feed now">
-                    {syncing ? 'Syncing…' : 'Sync results now'}
+                <button type="button" onClick={onSync} disabled={syncing} title="Resolve knockout teams and pull finished results from the live feed now">
+                    {syncing ? 'Syncing…' : 'Sync now'}
                 </button>
             </div>
             <ul>
@@ -353,6 +369,12 @@ function AdminResults() {
                         sides={matchSides(m, teams)}
                         initial={scores.get(m.id)}
                         onSaved={onRowSaved}
+                        // Knockout fixtures can have their teams set/corrected until they kick off.
+                        teamsEditable={isKnockoutMatch(m) && nowMs < Date.parse(m.kickoffUtc)}
+                        teamOptions={teams}
+                        homeTeamId={m.homeTeamId}
+                        awayTeamId={m.awayTeamId}
+                        onTeamsResolved={onTeamsResolved}
                     />
                 ))}
             </ul>
@@ -361,20 +383,36 @@ function AdminResults() {
 }
 
 /**
- * One Admin Results row. Records a match's 90-minute score. Mirrors the My-picks row UX: leaving
- * the row (vs. moving between its own inputs/button) auto-saves a complete, changed entry, the
- * Save button is out of the tab order, and a half-filled row still warns on save.
+ * One Admin Results row — the single reusable row for every phase. Records a match's 90-minute score
+ * (with its AUTO/MANUAL provenance badge), and for a knockout fixture whose kickoff hasn't passed it
+ * also lets the admin set/correct the two teams via dropdowns (a `MANUAL` resolution that the sync
+ * won't overwrite). Once the match has kicked off the teams are frozen and shown as plain labels.
+ * Mirrors the My-picks row UX: leaving the row auto-saves a complete, changed score; the Save button
+ * is out of the tab order; a half-filled score still warns on save.
  */
 function ResultRow({
     matchId,
     sides,
     initial,
     onSaved,
+    teamsEditable,
+    teamOptions,
+    homeTeamId,
+    awayTeamId,
+    onTeamsResolved,
 }: {
     matchId: string;
     sides: { home: MatchSide; away: MatchSide };
     initial: { home: string; away: string; firstScorer: FirstScorer | null; source: ResultSource } | undefined;
     onSaved: (matchId: string, result: { home: string; away: string; firstScorer: FirstScorer | null; source: ResultSource }) => void;
+    /** Knockout fixture not yet kicked off → its teams can be chosen/changed here. */
+    teamsEditable: boolean;
+    /** All teams (alphabetical), for the home/away dropdowns. */
+    teamOptions: Team[];
+    /** Current resolved team ids (a placeholder label until the fixture resolves). */
+    homeTeamId: string;
+    awayTeamId: string;
+    onTeamsResolved: (matchId: string, home: TeamId, away: TeamId) => void;
 }) {
     const { showToast } = useToast();
     const [home, setHome] = useState(initial?.home ?? '');
@@ -385,6 +423,41 @@ function ResultRow({
     // Provenance of the recorded result (BL4): undefined until something is recorded. An admin save
     // always makes it MANUAL (and the server refuses to let the sync overwrite it thereafter).
     const [source, setSource] = useState<ResultSource | undefined>(initial?.source);
+
+    // Knockout team selection. A placeholder label isn't a real id, so the dropdown starts blank
+    // until a team is chosen. The pair auto-saves once both sides are real, distinct teams.
+    const isRealTeam = (id: string) => teamOptions.some((t) => t.id === id);
+    const [homeTeam, setHomeTeam] = useState(isRealTeam(homeTeamId) ? homeTeamId : '');
+    const [awayTeam, setAwayTeam] = useState(isRealTeam(awayTeamId) ? awayTeamId : '');
+    const [savingTeams, setSavingTeams] = useState(false);
+
+    const saveTeams = async (nextHome: string, nextAway: string) => {
+        if (!nextHome || !nextAway || nextHome === nextAway) return; // wait for a complete, distinct pair
+        setSavingTeams(true);
+        try {
+            await api.adminSetKnockoutTeams(matchId, nextHome as TeamId, nextAway as TeamId);
+            onTeamsResolved(matchId, nextHome as TeamId, nextAway as TeamId);
+            showToast('success', `${matchId} teams set`);
+        } catch (err) {
+            const msg =
+                err instanceof ApiError && err.status === 403
+                    ? 'Teams locked — this match has kicked off. Refresh the page.'
+                    : err instanceof ApiError
+                      ? err.message
+                      : 'Failed to set teams';
+            showToast('error', msg);
+        } finally {
+            setSavingTeams(false);
+        }
+    };
+    const pickHome = (v: string) => {
+        setHomeTeam(v);
+        void saveTeams(v, awayTeam);
+    };
+    const pickAway = (v: string) => {
+        setAwayTeam(v);
+        void saveTeams(homeTeam, v);
+    };
 
     // The first scorer is determined by the score except when both teams scored: a 0-0 is "no
     // goal", a one-sided result auto-picks the lone scorer (both locked), and only a both-scored
@@ -445,8 +518,32 @@ function ResultRow({
                     {source}
                 </span>
             )}
-            <span style={{ flex: 1 }}>
-                <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} />
+            <span className="result-teams" style={{ flex: 1 }}>
+                {teamsEditable ? (
+                    <>
+                        <select aria-label={`${matchId} home team`} data-team-home={matchId} value={homeTeam} disabled={savingTeams} onChange={(e) => pickHome(e.target.value)}>
+                            <option value="">— home team —</option>
+                            {teamOptions.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                    {t.name}
+                                </option>
+                            ))}
+                        </select>{' '}
+                        vs{' '}
+                        <select aria-label={`${matchId} away team`} data-team-away={matchId} value={awayTeam} disabled={savingTeams} onChange={(e) => pickAway(e.target.value)}>
+                            <option value="">— away team —</option>
+                            {teamOptions.map((t) => (
+                                <option key={t.id} value={t.id}>
+                                    {t.name}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                ) : (
+                    <>
+                        <TeamSide side={sides.home} /> vs <TeamSide side={sides.away} />
+                    </>
+                )}
             </span>
             <input type="number" data-match={matchId} inputMode="numeric" min={0} max={20} value={home} onChange={onChange(setHome)} onBlur={onRowBlur} />
             <span>-</span>

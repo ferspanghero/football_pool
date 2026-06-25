@@ -91,8 +91,13 @@ export const api = {
             /** Server clock (epoch ms) at fetch time — used to default the panel to the current phase. */
             nowMs: number;
         }>('/api/admin/results'),
+    adminSetKnockoutTeams: (matchId: MatchId, homeTeamId: TeamId, awayTeamId: TeamId) =>
+        request<{ ok: true }>(`/api/admin/knockout/${matchId}`, { method: 'PUT', body: { homeTeamId, awayTeamId } }),
     adminSyncResults: () =>
-        request<{ summary: { processed: number; written: number; skipped: number } }>('/api/admin/sync-results', {
+        request<{
+            bracket: { processed: number; written: number; skipped: number };
+            results: { processed: number; written: number; skipped: number };
+        }>('/api/admin/sync-results', {
             method: 'POST',
         }),
     adminDeletePlayer: (playerId: number) =>

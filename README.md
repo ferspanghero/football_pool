@@ -36,7 +36,7 @@ Base points are multiplied by a phase factor (group stage ×1, escalating to the
 Two optional extras can add to — or subtract from — a match's points:
 
 - **First to score** *[optional]*: pick which team scores first, or neither. A correct pick earns a bonus; a wrong one — including a goalless draw — costs the same, both multiplied by the phase factor, so it's a genuine risk. Skipping it changes nothing. Locks at the match's kickoff; the admin records the actual first scorer (or a goalless draw) alongside the result, since it isn't derivable from the 90-minute score.
-- **2× boost** *[optional]*: flag one match per round to double everything that match earns — including negative points. The single-match 3rd-place and final rounds aren't boostable. Locks at that round's first kickoff.
+- **2× boost** *[optional]*: flag one match per round to double everything that match earns — including negative points. The single-match 3rd-place and final rounds aren't boostable. The boost locks per match, not per round: you can set or move it to any match in the round that hasn't kicked off yet — even after earlier matches in the round are done — and once your boosted match kicks off it's locked.
 
 ## Tech Stack
 
@@ -47,7 +47,7 @@ Two optional extras can add to — or subtract from — a match's points:
 | Database | Cloudflare D1 (SQLite) |
 | Hosting | A single Cloudflare Worker serves the SPA (as static assets) and the API (free tier) |
 
-Static tournament data (teams and all fixtures) lives in `data/`; only mutable state lives in D1. Knockout fixtures start with placeholder team labels that an admin replaces with the actual teams (by editing `data/tournament.ts`) once each round's pairings are known — there is no automatic standings/bracket resolution. An hourly scheduled job (a Cloudflare Cron Trigger) pulls finished matches' 90-minute scores from an external results feed and writes them automatically — and the admin can trigger the same pull on demand from the Results tab; results entered or corrected by an admin take precedence and are never overwritten. Time-dependent behavior reads a clock provider (`api/clock.ts`) so it can be controlled deterministically in tests.
+Static tournament data (teams and all fixtures) lives in `data/`; only mutable state lives in D1. Knockout fixtures start with placeholder team labels; once a round's pairings are known they're resolved automatically from the external feed into a D1 overlay (no source edit or redeploy), and the admin can correct any resolution by hand in the Results tab — each knockout fixture's teams are editable there until it kicks off. An hourly scheduled job (a Cloudflare Cron Trigger) resolves knockout teams and then pulls finished matches' 90-minute scores from the external feed, writing both automatically — and the admin can trigger the same sync on demand from the Results tab; anything an admin enters by hand (a result or a knockout pairing) takes precedence and is never overwritten by the sync. Time-dependent behavior reads a clock provider (`api/clock.ts`) so it can be controlled deterministically in tests.
 
 ## Getting Started
 
