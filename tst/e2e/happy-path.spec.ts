@@ -85,6 +85,11 @@ test('admin creates game → player predicts → result recorded → leaderboard
     const aliceRow = board.locator('tr', { hasText: DISPLAY_NAME });
     await expect(aliceRow).toContainText('7');
 
+    // The champion bonus is a breakdown column of its own, so the columns reconcile with the total.
+    // No champion pick here, so it reads a neutral 0; the data-label drives the mobile stacked card.
+    await expect(board.locator('thead th', { hasText: 'Champion' })).toBeVisible();
+    await expect(aliceRow.locator('td[data-label="Champion"]')).toHaveText('0');
+
     await adminCtx.close();
     await playerCtx.close();
 });

@@ -8,7 +8,9 @@ import { resultsRepo } from '@api/repos/results';
 import { predictionsRepo } from '@api/repos/predictions';
 import { boostsRepo } from '@api/repos/boosts';
 import { playersRepo } from '@api/repos/players';
-import { FIRST_KICKOFF_UTC, MATCHES } from '@data/tournament';
+import { knockoutTeamsRepo } from '@api/repos/knockoutTeams';
+import { CHAMPION, FIRST_KICKOFF_UTC, MATCHES } from '@data/tournament';
+import { CHAMPION_BONUS } from '@shared/scoring';
 import type { AppEnv } from '@api/types';
 
 const SECRET = 'test-secret-32-chars-12345678901234';
@@ -78,6 +80,44 @@ describe('GET /api/games/:id/leaderboard', () => {
 
         // Assert
         expect(body.rows[0]!.totalPoints).toBe(2);
+    });
+
+    test('awards the champion bonus once the Final resolves to the configured champion', async () => {
+        // Arrange — CHAMPION is validated against M104's overlay-resolved teams, so the bonus only
+        // lands after the bracket puts the champion in the Final
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const alice = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
+        await playersRepo.setChampionTeamId(db, alice.id, CHAMPION);
+        await knockoutTeamsRepo.upsert(db, { matchId: 'M104', homeTeamId: CHAMPION!, awayTeamId: 'ARG' });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/leaderboard`, {}, env(db));
+        const body = (await res.json()) as { rows: Array<{ totalPoints: number; championPoints: number }> };
+
+        // Assert
+        expect(body.rows[0]!.championPoints).toBe(CHAMPION_BONUS);
+        expect(body.rows[0]!.totalPoints).toBe(CHAMPION_BONUS);
+    });
+
+    test('withholds the champion bonus when the Final resolves without the configured champion', async () => {
+        // Arrange — a resolved Final that does not feature CHAMPION is a genuine misconfiguration;
+        // the bonus must stay unawarded rather than defaulting to everyone
+        const db = createTestDb();
+        const game = await gamesRepo.create(db, { name: 'G', passwordHash: 'h' });
+        const alice = await playersRepo.create(db, { gameId: game.id, displayName: 'Alice', passwordHash: 'h' });
+        await playersRepo.setChampionTeamId(db, alice.id, CHAMPION);
+        await knockoutTeamsRepo.upsert(db, { matchId: 'M104', homeTeamId: 'BRA', awayTeamId: 'ARG' });
+        const app = buildPreKickoffApp();
+
+        // Act
+        const res = await app.request(`/api/games/${game.id}/leaderboard`, {}, env(db));
+        const body = (await res.json()) as { rows: Array<{ totalPoints: number; championPoints: number }> };
+
+        // Assert
+        expect(body.rows[0]!.championPoints).toBe(0);
+        expect(body.rows[0]!.totalPoints).toBe(0);
     });
 
     test('doubles a boosted match in the leaderboard total', async () => {

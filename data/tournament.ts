@@ -258,7 +258,8 @@ export const FIRST_KICKOFF_UTC: string = sortedKickoffs[0]!;
  * The tournament champion (BL4) — set by hand to the winning `TeamId` once the Final is decided,
  * then redeploy (the last bracket edit). Stated explicitly rather than inferred from the Final's
  * 90-minute score, so a Final won in extra time / penalties (a 90-minute draw) still awards the
- * champion bonus. Must be one of the Final (M104) teams; see `determineChampion`. Undefined until
- * the Final is played.
+ * champion bonus. Must be a `TEAMS` id (not a display name) and one of the Final's (M104) resolved
+ * teams, or the bonus is silently never awarded; see `determineChampion`. Undefined until the Final
+ * is played.
  */
-export const CHAMPION: TeamId | undefined = undefined;
+export const CHAMPION: TeamId | undefined = 'ESP';

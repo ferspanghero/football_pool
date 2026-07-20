@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { TEAMS, MATCHES, FIRST_KICKOFF_UTC } from '@data/tournament';
+import { TEAMS, MATCHES, FIRST_KICKOFF_UTC, CHAMPION } from '@data/tournament';
 import { isGroupMatch } from '@shared/phases';
 import type { GroupLetter } from '@shared/types';
 
@@ -183,6 +183,17 @@ describe('MATCHES', () => {
                 if (ref) expect(matchIds, `${m.id} → ${label}`).toContain(ref[1]);
             }
         }
+    });
+});
+
+describe('CHAMPION', () => {
+    test('is either unset or a real team id', () => {
+        // Arrange — `TeamId` is a bare string alias, so a display name ('Spain') would typecheck as
+        // readily as an id ('ESP') and then silently award the bonus to nobody
+        const teamIds = TEAMS.map((t) => t.id);
+
+        // Act, Assert
+        expect(CHAMPION === undefined || teamIds.includes(CHAMPION)).toBe(true);
     });
 });
 

@@ -87,8 +87,11 @@ export type Prediction = {
  * One row of the per-game leaderboard, sorted by descending `totalPoints`.
  *
  * The `*Points` breakdown columns are the weighted + boosted base-score points split into the three
- * **non-overlapping** reasons a prediction scored (see `breakdownMatch`). They plus `firstScorerPoints`
- * reconcile with `totalPoints` (the only extra in the total is the flat champion bonus).
+ * **non-overlapping** reasons a prediction scored (see `breakdownMatch`). Every column reconciles
+ * with the total:
+ *
+ *   `exactScorePoints + correctOutcomePoints + correctGoalDiffPoints + firstScorerPoints +
+ *    championPoints === totalPoints`
  */
 export type LeaderboardRow = {
     playerId: number;
@@ -103,4 +106,7 @@ export type LeaderboardRow = {
     /** Net first-to-score points (BL6): the sum of +/− bonuses, with boosted matches counted
      * doubled so this reconciles with `totalPoints`. */
     firstScorerPoints: number;
+    /** The flat champion bonus (BL4) when the player picked the actual winner, else 0. Never
+     * boosted — a boost doubles a match's contribution, and the champion pick isn't a match. */
+    championPoints: number;
 };

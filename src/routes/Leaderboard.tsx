@@ -85,6 +85,7 @@ export function Leaderboard() {
                         <th>Right Goal Diff</th>
                         <th>Exact Score</th>
                         <th>First Scorer</th>
+                        <th>Champion</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -97,6 +98,7 @@ export function Leaderboard() {
                             <PointsCell label="Right Goal Diff" value={r.correctGoalDiffPoints} />
                             <PointsCell label="Exact Score" value={r.exactScorePoints} />
                             <PointsCell label="First Scorer" value={r.firstScorerPoints} />
+                            <PointsCell label="Champion" value={r.championPoints} />
                         </tr>
                     ))}
                 </tbody>

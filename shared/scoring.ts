@@ -181,8 +181,14 @@ type MatchPhaseLookup = ReadonlyMap<MatchId, Pick<Match, 'id' | 'phase'>>;
  * are present and agree. A match a player boosted for its phase (`boostsByPlayer`) has its whole
  * contribution doubled (BL7). The flat champion bonus is separate and never boosted. The
  * per-category breakdown columns (exact/outcome/goal-diff points, via `breakdownMatch`) split the
- * weighted base-score contribution into non-overlapping parts that, with `firstScorerPoints`,
- * reconcile with `totalPoints` (only the champion bonus is outside the columns).
+ * weighted base-score contribution into non-overlapping parts, so every column reconciles with the
+ * total:
+ *
+ *   `exactScorePoints + correctOutcomePoints + correctGoalDiffPoints + firstScorerPoints +
+ *    championPoints === totalPoints`
+ *
+ * Keep any new points source in step with that invariant — a contribution folded into `totalPoints`
+ * without its own column silently breaks the leaderboard's arithmetic.
  */
 export function computeLeaderboard(
     players: ReadonlyArray<Player>,
@@ -240,9 +246,9 @@ export function computeLeaderboard(
             correctGoalDiffPoints += parts.goalDiff * weight;
         }
 
-        if (actualChampionTeamId !== undefined && player.championTeamId === actualChampionTeamId) {
-            totalPoints += CHAMPION_BONUS;
-        }
+        const championPoints =
+            actualChampionTeamId !== undefined && player.championTeamId === actualChampionTeamId ? CHAMPION_BONUS : 0;
+        totalPoints += championPoints;
 
         return {
             playerId: player.id,
@@ -252,6 +258,7 @@ export function computeLeaderboard(
             correctOutcomePoints,
             correctGoalDiffPoints,
             firstScorerPoints,
+            championPoints,
         };
     });
 

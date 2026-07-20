@@ -275,6 +275,34 @@ describe('computeLeaderboard', () => {
         expect(carol.totalPoints).toBe(0);
     });
 
+    test('reports the champion bonus in its own breakdown column', () => {
+        // Arrange
+        const players = [
+            { id: 1, displayName: 'Alice', championTeamId: 'BRA' },
+            { id: 2, displayName: 'Bob', championTeamId: 'ARG' },
+            { id: 3, displayName: 'Carol', championTeamId: undefined },
+        ];
+
+        // Act
+        const board = computeLeaderboard(players, [], new Map(), matchesById, 'BRA');
+
+        // Assert — only the correct pick earns the column; a wrong or absent pick scores 0, not undefined
+        expect(board.find((r) => r.displayName === 'Alice')!.championPoints).toBe(CHAMPION_BONUS);
+        expect(board.find((r) => r.displayName === 'Bob')!.championPoints).toBe(0);
+        expect(board.find((r) => r.displayName === 'Carol')!.championPoints).toBe(0);
+    });
+
+    test('reports zero champion points when the actual champion is undefined', () => {
+        // Arrange
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: 'BRA' }];
+
+        // Act
+        const board = computeLeaderboard(players, [], new Map(), matchesById, undefined);
+
+        // Assert
+        expect(board[0]!.championPoints).toBe(0);
+    });
+
     test('does not award champion bonus when actual champion is undefined', () => {
         // Arrange
         const players = [{ id: 1, displayName: 'Alice', championTeamId: 'BRA' }];
@@ -364,6 +392,39 @@ describe('computeLeaderboard', () => {
         expect(row.exactScorePoints + row.correctOutcomePoints + row.correctGoalDiffPoints + row.firstScorerPoints).toBe(
             row.totalPoints,
         );
+    });
+
+    test('the breakdown columns reconcile with the total when the champion bonus is awarded', () => {
+        // Arrange — a boosted group exact (7→14) with its first-scorer bonus (2→4), an unboosted
+        // outcome-only (3), and a correct champion pick (100), so the total mixes a doubled match
+        // contribution with the flat bonus
+        const players = [{ id: 1, displayName: 'Alice', championTeamId: 'BRA' }];
+        const predictions = [
+            { playerId: 1, matchId: 'G_A_1', score: { home: 2, away: 1 }, firstScorer: 'HOME' as const },
+            { playerId: 1, matchId: 'G_B_1', score: { home: 4, away: 1 } },
+        ];
+        const results = new Map([
+            ['G_A_1', { home: 2, away: 1 }],
+            ['G_B_1', { home: 2, away: 1 }],
+        ]);
+        const firstScorers = new Map([['G_A_1', 'HOME' as const]]);
+        const boosts = new Map([[1, new Map<PhaseId, string>([['GROUP_R1', 'G_A_1']])]]);
+
+        // Act
+        const board = computeLeaderboard(players, predictions, results, matchesById, 'BRA', firstScorers, boosts);
+        const row = board[0]!;
+
+        // Assert — all five contribution columns sum exactly to the displayed total
+        expect(
+            row.exactScorePoints +
+                row.correctOutcomePoints +
+                row.correctGoalDiffPoints +
+                row.firstScorerPoints +
+                row.championPoints,
+        ).toBe(row.totalPoints);
+        // Pinned so the boost silently ceasing to apply can't leave the reconciliation still passing
+        expect(row.totalPoints).toBe(121);
+        expect(row.championPoints).toBe(CHAMPION_BONUS);
     });
 
     test('CHAMPION_BONUS is 100', () => {

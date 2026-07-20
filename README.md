@@ -36,7 +36,10 @@ Base points are multiplied by a phase factor (group stage ×1, escalating to the
 Two optional extras can add to — or subtract from — a match's points:
 
 - **First to score** *[optional]*: pick which team scores first, or neither. A correct pick earns a bonus; a wrong one — including a goalless draw — costs the same, both multiplied by the phase factor, so it's a genuine risk. Skipping it changes nothing. Locks at the match's kickoff; the admin records the actual first scorer (or a goalless draw) alongside the result, since it isn't derivable from the 90-minute score.
+
 - **2× boost** *[optional]*: flag one match per round to double everything that match earns — including negative points. The single-match 3rd-place and final rounds aren't boostable. The boost locks per match, not per round: you can set or move it to any match in the round that hasn't kicked off yet — even after earlier matches in the round are done — and once your boosted match kicks off it's locked.
+
+The leaderboard breaks each player's total down into the reasons it was earned — one column per scoring category, plus the first-scorer and champion bonuses — and those columns always add up to the total on display.
 
 ## Tech Stack
 
